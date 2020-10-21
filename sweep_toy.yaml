@@ -1,0 +1,19 @@
+method: bayes
+metric:
+  goal: maximize
+  name: train/meta_obj
+parameters:
+  ^initial_lr_x:
+    distribution: log_uniform
+    min: -7.76804212
+    max: -4.76804212
+  ^decay_factor:
+    distribution: uniform
+    min: 0.3
+    max: 0.6
+  ^decay_steps:
+    distribution: q_uniform
+    min: 50000
+    max: 1000000
+    q: 10000
+program: main.py
