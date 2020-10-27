@@ -109,7 +109,7 @@ def deploy(cluster, sweep):
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() or __debug__
     debug = False  # TODO: removeme
 
-    git_repo = git.Repo(os.path.dirname(__file__))
+    git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
     if (not cluster) and sweep:

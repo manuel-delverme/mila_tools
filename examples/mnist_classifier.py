@@ -29,8 +29,8 @@ from jax.experimental import optimizers
 from jax.experimental import stax
 from jax.experimental.stax import Dense, Relu, LogSoftmax
 
-from examples import config
-from examples import datasets
+from . import config
+from . import datasets
 
 
 def loss(params, batch):
