@@ -1,5 +1,13 @@
 `mila_tools` aims to reduce the overhead to deploy experiments on mila clusters.
 
+Right now it's responsabilities cover:
+1. Deployment on servers
+1. Handling of Sweeps
+1. Tracking of hyperparameters
+1. Code versioning
+1. Notifications
+1. Wandb integration.
+
 Example:
 
 1. `python3 -m pip install virtualenv`
