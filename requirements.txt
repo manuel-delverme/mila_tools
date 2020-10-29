@@ -1,4 +1,0 @@
-GitPython
-tensorboardX
-matplotlib
-wandb

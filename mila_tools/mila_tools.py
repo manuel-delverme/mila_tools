@@ -26,7 +26,7 @@ def register(config_params):
         assert arg[:2] == "--"
         k, v = arg[2:].split("=")
         k = k.lstrip(wandb_escape)
-        v = cast_param(v)
+        v = _cast_param(v)
 
         if k not in config_params.keys():
             raise ValueError(f"Trying to set {k}, but that's not one of {list(config_params.keys())}")
@@ -35,7 +35,7 @@ def register(config_params):
     hyperparams = config_params.copy()
 
 
-def cast_param(v):
+def _cast_param(v):
     if "." in v:
         v = float(v)
     else:
@@ -46,7 +46,7 @@ def cast_param(v):
     return v
 
 
-def valid_hyperparam(key, value):
+def _valid_hyperparam(key, value):
     if key.startswith("__") and key.endswith("__"):
         return False
     if key == "_":
@@ -56,7 +56,7 @@ def valid_hyperparam(key, value):
     return True
 
 
-class Wandb:
+class WandbWrapper:
     _global_step = 0
 
     @property
@@ -73,7 +73,7 @@ class Wandb:
         wandb.init(project=project_name, name=experiment_id)
 
         def register_param(name, value, prefix=""):
-            if not valid_hyperparam(name, value):
+            if not _valid_hyperparam(name, value):
                 return
 
             if name == "_extra_modules_":
@@ -119,15 +119,15 @@ def deploy(cluster, sweep):
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-        tb = Wandb(f"{experiment_id}_{dtm}", project_name=project_name)
+        tb = WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name)
     else:
-        experiment_id = ask_experiment_id(cluster, debug)
+        experiment_id = _ask_experiment_id(cluster, debug)
 
         if not cluster or debug:
             dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S") + ".pt/"
-            tb = setup_tb(logdir=os.path.join("tensorboard/", experiment_id, dtm))
+            tb = _setup_tb(logdir=os.path.join("../tensorboard/", experiment_id, dtm))
         else:
-            commit_and_sendjob(experiment_id, sweep, git_repo, project_name)
+            _commit_and_sendjob(experiment_id, sweep, git_repo, project_name)
             sys.exit()
 
     print(f"experiment_id: {experiment_id}", dtm)
@@ -172,7 +172,7 @@ def deploy(cluster, sweep):
       ''')
 
 
-def ask_experiment_id(cluster, debug):
+def _ask_experiment_id(cluster, debug):
     if debug:
         return f"DEBUG_RUN"
 
@@ -181,7 +181,7 @@ def ask_experiment_id(cluster, debug):
     root = tkinter.Tk()
     title = "[CLUSTER]" if cluster else "[LOCAL]"
     experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
-    experiment_id.replace(" ", "_")
+    experiment_id = (experiment_id or "no_id").replace(" ", "_")
     root.destroy()
 
     if cluster:
@@ -189,12 +189,12 @@ def ask_experiment_id(cluster, debug):
     return experiment_id
 
 
-def setup_tb(logdir):
+def _setup_tb(logdir):
     print("http://localhost:6006")
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
-def ensure_scripts():
+def _ensure_scripts():
     retr1 = os.popen("ssh mila md5sum localenv_sweep.sh run_experiment.sh srun_python.sh").read()
     retr2 = os.popen("md5sum slurm_scripts/localenv_sweep.sh slurm_scripts/run_experiment.sh slurm_scripts/srun_python.sh").read()
     if retr1.split()[::2] != retr2.split()[::2]:
@@ -203,7 +203,7 @@ def ensure_scripts():
         os.system("scp slurm_scripts/* mila:")
 
 
-def commit_and_sendjob(experiment_id, sweep, git_repo, project_name):
+def _commit_and_sendjob(experiment_id, sweep, git_repo, project_name):
     code_version = git_repo.commit().hexsha
     url = git_repo.remotes[0].url
     # 2) commits everything to git with the name as message (so i r later reproduce the same experiment)
@@ -212,7 +212,7 @@ def commit_and_sendjob(experiment_id, sweep, git_repo, project_name):
     # 3) pushes the changes to git
     os.system("git push")
 
-    ensure_scripts()  # TODO: the check requires an extra ssh, this should be skipped
+    _ensure_scripts()  # TODO: the check requires an extra ssh, this should be skipped
 
     if sweep:
         wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep], stderr=subprocess.STDOUT).decode("utf-8")
