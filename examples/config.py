@@ -24,4 +24,4 @@ mila_tools.register(locals())
 ################################################################
 learning_rate = jax.experimental.optimizers.inverse_time_decay(initial_lr, decay_steps, decay_factor, staircase=True)
 
-mila_tools.deploy(cluster=True, sweep=False)
+mila_tools.deploy(cluster=True, sweep_yaml="")

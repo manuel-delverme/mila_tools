@@ -1,5 +1,7 @@
 `mila_tools` aims to reduce the overhead to deploy experiments on mila clusters.
 
+It's important to reduce cognitive overload for the researcher measured as seconds-to-first-tensorboard datapoint
+
 Right now it's responsabilities cover:
 1. Deployment on servers
 1. Handling of Sweeps

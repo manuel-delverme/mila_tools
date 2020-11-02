@@ -31,6 +31,9 @@ log "Using shared venv @ $HOME/venv"
 source $HOME/venv/bin/activate
 $HOME/venv/bin/python -m pip install --upgrade pip
 
+# TODO: the client should send the mila_tools version to avoid issues
+$HOME/venv/bin/python -m pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
+
 log "Updating latest requirements"
 
 # install cuda-jaxlib

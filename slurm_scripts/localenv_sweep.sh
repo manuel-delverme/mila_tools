@@ -43,6 +43,6 @@ source "$SLURM_TMPDIR/venv/bin/activate"
 log "Downloading modules"
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 sh $HOME/install_jax.sh
-pip install -r "$HOME/requirements.txt"
+pip install -r $HOME/requirements.txt --exists-action w
 
 wandb agent "delvermm/constrained_nn/$2"
