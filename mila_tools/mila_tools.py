@@ -16,6 +16,17 @@ wandb_escape = "^"
 hyperparams = None
 
 
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print(f'{method.__name__!r}  {(te - ts) * 1000:2.2f} ms')
+        return result
+    return timed
+
+
+@timeit
 def register(config_params):
     global hyperparams
     # overwrite CLI parameters
@@ -109,7 +120,7 @@ class WandbWrapper:
 
 def deploy(cluster, sweep_yaml, proc_num=1):
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() or __debug__
-    debug = False  # TODO: removeme
+    # debug = False  # TODO: removeme
 
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
@@ -200,11 +211,13 @@ def _ask_experiment_id(cluster, sweep, debug):
     return experiment_id
 
 
+@timeit
 def _setup_tb(logdir):
     print("http://localhost:6006")
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
+@timeit
 def _ensure_scripts():
     tmp_folder = os.popen("ssh mila mktemp -d -t mila_tools-XXXXXXXXXX").read().strip()
     scripts_path = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
@@ -222,6 +235,7 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
+@timeit
 def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, proc_num):
     code_version = git_repo.commit().hexsha
     url = git_repo.remotes[0].url
