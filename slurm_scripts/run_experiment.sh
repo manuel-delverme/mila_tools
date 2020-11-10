@@ -15,7 +15,6 @@ log "cd $HOME/experiments/"
 cd $HOME/experiments/ || exit
 
 FOLDER=$(mktemp -p . -d)
-# FOLDER=$SLURM_TMPDIR
 log "FOLDER=$FOLDER"
 
 log "downloading source code from $1 to $FOLDER"

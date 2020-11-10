@@ -1,3 +1,4 @@
+import concurrent.futures
 import datetime
 import os
 import subprocess
@@ -5,6 +6,7 @@ import sys
 import time
 import types
 
+import fabric
 import git
 import matplotlib.pyplot as plt
 import tensorboardX
@@ -14,6 +16,7 @@ import yaml
 
 wandb_escape = "^"
 hyperparams = None
+tb = None
 
 
 def timeit(method):
@@ -23,10 +26,10 @@ def timeit(method):
         te = time.time()
         print(f'{method.__name__!r}  {(te - ts) * 1000:2.2f} ms')
         return result
+
     return timed
 
 
-@timeit
 def register(config_params):
     global hyperparams
     # overwrite CLI parameters
@@ -119,8 +122,11 @@ class WandbWrapper:
 
 
 def deploy(cluster, sweep_yaml, proc_num=1):
+    global tb
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() or __debug__
-    # debug = False  # TODO: removeme
+    debug = False  # TODO: removeme
+    ran_by_slurm = "SLURM_JOB_ID" in os.environ.keys()
+    local_run = not cluster
 
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
@@ -129,71 +135,35 @@ def deploy(cluster, sweep_yaml, proc_num=1):
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
-    if (not cluster) and sweep_yaml:
+    if local_run and sweep_yaml:
         raise NotImplemented("Local sweeps are not supported")
 
-    if "SLURM_JOB_ID" in os.environ.keys():
+    if ran_by_slurm:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         tb = WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name)
-    else:
-        experiment_id = _ask_experiment_id(cluster, sweep_yaml, debug)
+        return
 
-        if not cluster or debug:
-            dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S") + ".pt/"
-            logdir = os.path.join(git_repo.working_dir, "tensorboard/", experiment_id, dtm)
-            tb = _setup_tb(logdir=logdir)
-        else:
-            _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
-            sys.exit()
+    dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S") + ".pt/"
+    if debug:
+        logdir = os.path.join(git_repo.working_dir, "tensorboard/DEBUG_RUN", dtm)
+        tb = _setup_tb(logdir=logdir)
+        return
+
+    # experiment_id = _ask_experiment_id(cluster, sweep_yaml, debug)
+    experiment_id = "profiling"
+    if local_run:
+        logdir = os.path.join(git_repo.working_dir, "tensorboard/", experiment_id, dtm)
+        tb = _setup_tb(logdir=logdir)
+    else:
+        _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
+        sys.exit()
 
     print(f"experiment_id: {experiment_id}", dtm)
-    tb.global_step = 0
-
-    if any((debug,)):
-        print(r'''
-                                        _.---"'"""""'`--.._
-                                 _,.-'                   `-._
-                             _,."                            -.
-                         .-""   ___...---------.._             `.
-                         `---'""                  `-.            `.
-                                                     `.            \
-                                                       `.           \
-                                                         \           \
-                                                          .           \
-                                                          |            .
-                                                          |            |
-                                    _________             |            |
-                              _,.-'"         `"'-.._      :            |
-                          _,-'                      `-._.'             |
-                       _.'                              `.             '
-            _.-.    _,+......__                           `.          .
-          .'    `-"'           `"-.,-""--._                 \        /
-         /    ,'                  |    __  \                 \      /
-        `   ..                       +"  )  \                 \    /
-         `.'  \          ,-"`-..    |       |                  \  /
-          / " |        .'       \   '.    _.'                   .'
-         |,.."--"""--..|    "    |    `""`.                     |
-       ,"               `-._     |        |                     |
-     .'                     `-._+         |                     |
-    /                           `.                        /     |
-    |    `     '                  |                      /      |
-    `-.....--.__                  |              |      /       |
-       `./ "| / `-.........--.-   '              |    ,'        '
-         /| ||        `.'  ,'   .'               |_,-+         /
-        / ' '.`.        _,'   ,'     `.          |   '   _,.. /
-       /   `.  `"'"'""'"   _,^--------"`.        |    `.'_  _/
-      /... _.`:.________,.'              `._,.-..|        "'
-     `.__.'                                 `._  /
-                                               "'
-      ''')
 
 
 def _ask_experiment_id(cluster, sweep, debug):
-    if debug:
-        return f"DEBUG_RUN"
-
     import tkinter.simpledialog
 
     root = tkinter.Tk()
@@ -211,20 +181,19 @@ def _ask_experiment_id(cluster, sweep, debug):
     return experiment_id
 
 
-@timeit
 def _setup_tb(logdir):
     print("http://localhost:6006")
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
-@timeit
 def _ensure_scripts():
-    tmp_folder = os.popen("ssh mila mktemp -d -t mila_tools-XXXXXXXXXX").read().strip()
+    ssh_session = fabric.Connection("mila")
+    retr = ssh_session.run("mktemp -d -t mila_tools-XXXXXXXXXX")
+    tmp_folder = retr.stdout.strip()
     scripts_path = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
-    cmd = f"rsync -rv {scripts_path} mila:{tmp_folder}/"
-    retr = os.popen(cmd).read().strip()
-    log_cmd(cmd, retr)
-    return tmp_folder
+    for file_path in os.listdir(scripts_path):
+        ssh_session.put(scripts_path + file_path, tmp_folder + "/")
+    return tmp_folder, ssh_session
 
 
 def log_cmd(cmd, retr):
@@ -237,36 +206,33 @@ def log_cmd(cmd, retr):
 
 @timeit
 def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, proc_num):
-    code_version = git_repo.commit().hexsha
-    url = git_repo.remotes[0].url
-    # 2) commits everything to git with the name as message (so i r later reproduce the same experiment)
-    # os.system(f"git add .")
-    # os.system(f"git commit -m '{experiment_id}'")
-    # TODO: ideally the commits should go to a parallel branch so the one in use is not filled with versioning checkpoints
+    git_url = git_repo.remotes[0].url
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        scripts_folder = executor.submit(_ensure_scripts)
+        code_version = git_sync(experiment_id, git_repo)
 
-    # 3) pushes the changes to git
-    # os.system("git push")
-
-    scripts_folder = _ensure_scripts()
-
-    _, entrypoint = os.path.split(sys.argv[0])
-    if sweep_yaml:
-        raise NotImplemented
-        with open(sweep_yaml, 'r') as stream:
-            data_loaded = yaml.safe_load(stream)
-
-        if data_loaded["program"] != entrypoint:
-            raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
-        wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
-        sweep_id = wandb_stdout.split("/")[-1].strip()
-        command = f"ssh mila /opt/slurm/bin/sbatch {scripts_folder}/localenv_sweep.sh {url} {sweep_id} {code_version}"
-        num_repeats = 1  # this should become > 1 for parallel sweeps
-    else:
         _, entrypoint = os.path.split(sys.argv[0])
-        command = f"ssh mila bash -l {scripts_folder}/run_experiment.sh {url} {entrypoint} {code_version}"
-        num_repeats = 1  # this should become > 1 for parallel sweeps
+        if sweep_yaml:
+            with open(sweep_yaml, 'r') as stream:
+                data_loaded = yaml.safe_load(stream)
 
-    print(command)
+            if data_loaded["program"] != entrypoint:
+                raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
+            wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
+            sweep_id = wandb_stdout.split("/")[-1].strip()
+            ssh_args = (git_url, sweep_id, code_version)
+            ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
+            num_repeats = 1  # this should become > 1 for parallel sweeps
+        else:
+            _, entrypoint = os.path.split(sys.argv[0])
+            scripts_folder, ssh_session = scripts_folder.result()
+            ssh_args = (git_url, entrypoint, code_version)
+            ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
+            num_repeats = 1  # this should become > 1 for parallel sweeps
+
+    scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
+    ssh_command = ssh_command.format(scripts_folder, *ssh_args)
+    print(ssh_command)
     for proc_num in range(num_repeats):
         if proc_num > 0:
             time.sleep(1)
@@ -275,4 +241,16 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
 
-        os.system(command)
+        ssh_session.run(ssh_command)
+
+
+@timeit
+def git_sync(experiment_id, git_repo):
+    code_version = git_repo.commit().hexsha
+    # 2) commits everything to git with the name as message (so i r later reproduce the same experiment)
+    os.system(f"git add .")
+    os.system(f"git commit -m '{experiment_id}'")
+    # TODO: ideally the commits should go to a parallel branch so the one in use is not filled with versioning checkpoints
+    # 3) pushes the changes to git
+    os.system("git push")  # TODO: only if commit
+    return code_version

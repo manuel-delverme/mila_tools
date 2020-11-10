@@ -35,6 +35,7 @@ log "pwd is now $(pwd)"
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
 log "Setting up venv @ $SLURM_TMPDIR/venv..."
 python -m virtualenv "$SLURM_TMPDIR/venv"
+# shellcheck disable=SC1090
 source "$SLURM_TMPDIR/venv/bin/activate"
 
 # log "Using shared venv @ $HOME/venv"
@@ -43,6 +44,9 @@ source "$SLURM_TMPDIR/venv/bin/activate"
 log "Downloading modules"
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 sh $HOME/install_jax.sh
-pip install -r $HOME/requirements.txt --exists-action w
+pip install -r "$HOME/requirements.txt" --exists-action w
 
-wandb agent "delvermm/constrained_nn/$2"
+# TODO: the client should send the mila_tools version to avoid issues
+pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
+
+wandb agent "delvermm/$2"
