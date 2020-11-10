@@ -37,16 +37,17 @@ log "Setting up venv @ $SLURM_TMPDIR/venv..."
 python -m virtualenv "$SLURM_TMPDIR/venv"
 # shellcheck disable=SC1090
 source "$SLURM_TMPDIR/venv/bin/activate"
+python -m pip install --upgrade pip
 
 # log "Using shared venv @ $HOME/venv"
 # source $HOME/venv/bin/activate
 
 log "Downloading modules"
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
-sh $HOME/install_jax.sh
-pip install -r "$HOME/requirements.txt" --exists-action w
+sh $HOME/install_jax.sh # TODO: move this to mila_tools
+python -m pip install -r "$HOME/requirements.txt" --exists-action w
 
 # TODO: the client should send the mila_tools version to avoid issues
-pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
+python -m pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
 
-wandb agent "delvermm/$2"
+wandb agent "$2"

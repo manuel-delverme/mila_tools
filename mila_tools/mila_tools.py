@@ -24,7 +24,7 @@ def timeit(method):
         ts = time.time()
         result = method(*args, **kw)
         te = time.time()
-        print(f'{method.__name__!r}  {(te - ts) * 1000:2.2f} ms')
+        print(f'{method.__name__!r}  {(te - ts):2.2f} s')
         return result
 
     return timed
@@ -219,7 +219,10 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
             if data_loaded["program"] != entrypoint:
                 raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
             wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
-            sweep_id = wandb_stdout.split("/")[-1].strip()
+            # sweep_id = wandb_stdout.split("/")[-1].strip()
+            row, = [row for row in wandb_stdout.split("\n") if "Run sweep agent with:" in row]
+            sweep_id = row.split()[-1].strip()
+
             ssh_args = (git_url, sweep_id, code_version)
             ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
@@ -230,6 +233,7 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
             ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
 
+    # TODO: assert -e git+git@github.com:manuel-delverme/mila_tools.git#egg=mila_tools is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
