@@ -52,6 +52,4 @@ sh $HOME/install_jax.sh # TODO: move this to mila_tools
 python -m pip install -r "requirements.txt" --exists-action w
 
 # TODO: the client should send the mila_tools version to avoid issues
-python -m pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
-
 wandb agent "$wandb_params"
