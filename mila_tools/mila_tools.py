@@ -151,8 +151,8 @@ def deploy(cluster, sweep_yaml, proc_num=1):
         tb = _setup_tb(logdir=logdir)
         return
 
-    # experiment_id = _ask_experiment_id(cluster, sweep_yaml, debug)
-    experiment_id = "profiling"
+    experiment_id = _ask_experiment_id(cluster, sweep_yaml)
+    # experiment_id = "profiling"
     if local_run:
         logdir = os.path.join(git_repo.working_dir, "tensorboard/", experiment_id, dtm)
         tb = _setup_tb(logdir=logdir)
@@ -163,7 +163,7 @@ def deploy(cluster, sweep_yaml, proc_num=1):
     print(f"experiment_id: {experiment_id}", dtm)
 
 
-def _ask_experiment_id(cluster, sweep, debug):
+def _ask_experiment_id(cluster, sweep):
     import tkinter.simpledialog
 
     root = tkinter.Tk()

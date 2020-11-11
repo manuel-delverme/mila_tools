@@ -49,7 +49,7 @@ python -m pip install --upgrade pip
 log "Downloading modules"
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 sh $HOME/install_jax.sh # TODO: move this to mila_tools
-python -m pip install -r "$HOME/requirements.txt" --exists-action w
+python -m pip install -r "requirements.txt" --exists-action w
 
 # TODO: the client should send the mila_tools version to avoid issues
 python -m pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
