@@ -9,6 +9,10 @@
 #SBATCH --partition=long
 #SBATCH --get-user-env=L
 
+git_repo=$1
+wandb_params=$2
+git_hash=$3
+
 # Module system
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
@@ -26,10 +30,10 @@ module load cuda/10.1/cudnn/7.6
 # FOLDER=$(mktemp -p . -d)
 FOLDER=$SLURM_TMPDIR/src/
 
-log "downloading source code from $1 to $FOLDER"
-git clone $1 $FOLDER/
+log "downloading source code from $git_repo to $FOLDER"
+git clone $git_repo $FOLDER/
 cd $FOLDER || exit
-git checkout $3
+git checkout $git_hash
 log "pwd is now $(pwd)"
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
@@ -50,4 +54,4 @@ python -m pip install -r "$HOME/requirements.txt" --exists-action w
 # TODO: the client should send the mila_tools version to avoid issues
 python -m pip install --upgrade git+https://github.com/manuel-delverme/mila_tools/
 
-wandb agent "$2"
+wandb agent "$wandb_params"
