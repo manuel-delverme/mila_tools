@@ -121,8 +121,8 @@ class WandbWrapper:
         wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
 
 
+@timeit
 def deploy(cluster, sweep_yaml, proc_num=1):
-    global tb
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() or __debug__
     debug = False  # TODO: removeme
     ran_by_slurm = "SLURM_JOB_ID" in os.environ.keys()
@@ -142,20 +142,18 @@ def deploy(cluster, sweep_yaml, proc_num=1):
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-        tb = WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name)
-        return
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S") + ".pt/"
     if debug:
         logdir = os.path.join(git_repo.working_dir, "tensorboard/DEBUG_RUN", dtm)
-        tb = _setup_tb(logdir=logdir)
-        return
+        return _setup_tb(logdir=logdir)
 
     experiment_id = _ask_experiment_id(cluster, sweep_yaml)
     # experiment_id = "profiling"
     if local_run:
         logdir = os.path.join(git_repo.working_dir, "tensorboard/", experiment_id, dtm)
-        tb = _setup_tb(logdir=logdir)
+        return _setup_tb(logdir=logdir)
     else:
         _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
         sys.exit()
@@ -250,11 +248,11 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
 
 @timeit
 def git_sync(experiment_id, git_repo):
-    code_version = git_repo.commit().hexsha
     # 2) commits everything to git with the name as message (so i r later reproduce the same experiment)
     os.system(f"git add .")
     os.system(f"git commit -m '{experiment_id}'")
     # TODO: ideally the commits should go to a parallel branch so the one in use is not filled with versioning checkpoints
     # 3) pushes the changes to git
     os.system("git push")  # TODO: only if commit
+    code_version = git_repo.commit().hexsha
     return code_version

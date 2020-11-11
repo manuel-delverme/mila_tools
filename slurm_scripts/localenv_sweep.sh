@@ -9,10 +9,6 @@
 #SBATCH --partition=long
 #SBATCH --get-user-env=L
 
-git_repo=$1
-wandb_params=$2
-git_hash=$3
-
 # Module system
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
@@ -24,16 +20,12 @@ module purge
 module load python/3.8
 module load cuda/10.1/cudnn/7.6
 
-# log "cd $HOME/experiments/"
-# cd $HOME/experiments/
-
-# FOLDER=$(mktemp -p . -d)
 FOLDER=$SLURM_TMPDIR/src/
 
-log "downloading source code from $git_repo to $FOLDER"
-git clone $git_repo $FOLDER/
+log "downloading source code from $1 to $FOLDER"
+git clone $1 $FOLDER/
 cd $FOLDER || exit
-git checkout $git_hash
+git checkout $3
 log "pwd is now $(pwd)"
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
@@ -43,13 +35,10 @@ python -m virtualenv "$SLURM_TMPDIR/venv"
 source "$SLURM_TMPDIR/venv/bin/activate"
 python -m pip install --upgrade pip
 
-# log "Using shared venv @ $HOME/venv"
-# source $HOME/venv/bin/activate
-
 log "Downloading modules"
-export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 sh $HOME/install_jax.sh # TODO: move this to mila_tools
 python -m pip install -r "requirements.txt" --exists-action w
 
+export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 # TODO: the client should send the mila_tools version to avoid issues
-wandb agent "$wandb_params"
+wandb agent "$2"
