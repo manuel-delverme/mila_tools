@@ -34,9 +34,9 @@ log "pwd is now $(pwd)"
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
 log "Setting up venv @ $FOLDER/venv..."
-python -m virtualenv "$FOLDER/venv"
+python -m virtualenv "venv"
 # shellcheck disable=SC1090
-source "$FOLDER/venv/bin/activate"
+source "venv/bin/activate"
 python -m pip install --upgrade pip
 
 log "Downloading modules"

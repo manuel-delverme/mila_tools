@@ -126,7 +126,17 @@ def deploy(cluster, sweep_yaml, proc_num=1):
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() or __debug__
     debug = False  # TODO: removeme
     ran_by_slurm = "SLURM_JOB_ID" in os.environ.keys()
+    if not ran_by_slurm:
+        try:
+            import tkinter.simpledialog
+        except:
+            print(os.environ.keys())
+            sys.exit()
+        else:
+            pass
+
     local_run = not cluster
+    print(debug, cluster, ran_by_slurm, locals, os.environ.keys())
 
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
@@ -226,7 +236,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
             num_repeats = 1  # this should become > 1 for parallel sweeps
         else:
             _, entrypoint = os.path.split(sys.argv[0])
-            scripts_folder, ssh_session = scripts_folder.result()
             ssh_args = (git_url, entrypoint, code_version)
             ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
