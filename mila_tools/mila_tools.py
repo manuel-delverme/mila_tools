@@ -126,14 +126,6 @@ def deploy(cluster, sweep_yaml, proc_num=1):
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() or __debug__
     debug = False  # TODO: removeme
     ran_by_slurm = "SLURM_JOB_ID" in os.environ.keys()
-    if not ran_by_slurm:
-        try:
-            import tkinter.simpledialog
-        except:
-            print(os.environ.keys())
-            sys.exit()
-        else:
-            pass
 
     local_run = not cluster
     print(debug, cluster, ran_by_slurm, locals, os.environ.keys())
