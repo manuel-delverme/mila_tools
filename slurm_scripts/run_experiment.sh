@@ -28,6 +28,12 @@ log "Setting up venv @ $FOLDER/venv..."
 python -m virtualenv "venv"
 # shellcheck disable=SC1090
 source "venv/bin/activate"
+
+# export WHEELHOUSE="${HOME}/mila_tools_wheelhouse/"
+# mkdir -p $WHEELHOUSE
+# export PIP_FIND_LINKS="file://${WHEELHOUSE}"
+# export PIP_WHEEL_DIR="${WHEELHOUSE}"
+
 python -m pip install --upgrade pip
 
 log "Downloading modules"

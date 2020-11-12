@@ -6,7 +6,7 @@
 #SBATCH --mem=24GB
 #SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:1
-#SBATCH --partition=main
+#SBATCH --partition=long
 #SBATCH --get-user-env=L
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 python -O -u $1
