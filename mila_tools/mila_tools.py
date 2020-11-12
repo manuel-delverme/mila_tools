@@ -128,7 +128,6 @@ def deploy(cluster, sweep_yaml, proc_num=1):
     ran_by_slurm = "SLURM_JOB_ID" in os.environ.keys()
 
     local_run = not cluster
-    print(debug, cluster, ran_by_slurm, locals, os.environ.keys())
 
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
@@ -143,8 +142,8 @@ def deploy(cluster, sweep_yaml, proc_num=1):
     if ran_by_slurm:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
-        dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name)
+        jid = os.environ["SLURM_JOB_ID"]
+        return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S") + ".pt/"
     if debug:

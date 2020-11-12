@@ -3,7 +3,9 @@
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
 }
-SCRIPTS_FOLDER=$(dirname realpath $0)
+SCRIPT=$(realpath $0)
+log "script realpath: $SCRIPT"
+SCRIPTS_FOLDER=$(dirname $SCRIPT)
 log "scripts home: $SCRIPTS_FOLDER"
 
 source /etc/profile
@@ -26,7 +28,10 @@ log "pwd is now $(pwd)"
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
 log "Setting up venv @ $FOLDER/venv..."
-python -m virtualenv "venv"
+python -m pip install virtualenv-clone
+# python -m virtualenv "venv"
+python -m clonevirtualenv "$HOME/venv" "venv"
+
 # shellcheck disable=SC1090
 source "venv/bin/activate"
 
