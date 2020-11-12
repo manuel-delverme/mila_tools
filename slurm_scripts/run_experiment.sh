@@ -3,7 +3,8 @@
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
 }
-SCRIPTS=$(pwd)
+SCRIPTS_FOLDER=$(dirname realpath $0)
+log "scripts home: $SCRIPTS_FOLDER"
 
 source /etc/profile
 log "Refreshing modules..."
@@ -42,5 +43,5 @@ python -m pip install -r "requirements.txt" --exists-action w
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 # TODO: the client should send the mila_tools version to avoid issues
-log "/opt/slurm/bin/sbatch $SCRIPTS/srun_python.sh $2"
-/opt/slurm/bin/sbatch $SCRIPTS/srun_python.sh $2
+log "/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $2"
+/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $2
