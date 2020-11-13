@@ -26,19 +26,18 @@ cd $FOLDER || exit
 git checkout $3
 log "pwd is now $(pwd)"
 
-# Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
-log "Setting up venv @ $FOLDER/venv..."
-python -m pip install virtualenv-clone
-# python -m virtualenv "venv"
-python -m clonevirtualenv "$HOME/venv" "venv"
+# # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
+# log "Setting up venv @ $FOLDER/venv..."
+# python -m pip install virtualenv-clone
+# # python -m virtualenv "venv"
+# python -m clonevirtualenv "$HOME/venv" "venv"
+#
+# # shellcheck disable=SC1090
+# source "venv/bin/activate"
 
+log "Using shared venv @ $HOME/venv"
 # shellcheck disable=SC1090
-source "venv/bin/activate"
-
-# export WHEELHOUSE="${HOME}/mila_tools_wheelhouse/"
-# mkdir -p $WHEELHOUSE
-# export PIP_FIND_LINKS="file://${WHEELHOUSE}"
-# export PIP_WHEEL_DIR="${WHEELHOUSE}"
+source $HOME/venv/bin/activate
 
 python -m pip install --upgrade pip
 

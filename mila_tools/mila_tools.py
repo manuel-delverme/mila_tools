@@ -17,6 +17,7 @@ import yaml
 wandb_escape = "^"
 hyperparams = None
 tb = None
+SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
 
 
 def timeit(method):
@@ -122,9 +123,9 @@ class WandbWrapper:
 
 
 @timeit
-def deploy(cluster, sweep_yaml, proc_num=1):
+def deploy(cluster, sweep_yaml, extra_slurm_headers=None, proc_num=1):
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
-    # debug = False  # TODO: removeme
+    debug = False  # TODO: removeme
     ran_by_slurm = "SLURM_JOB_ID" in os.environ.keys()
 
     local_run = not cluster
@@ -156,7 +157,7 @@ def deploy(cluster, sweep_yaml, proc_num=1):
         logdir = os.path.join(git_repo.working_dir, "tensorboard/", experiment_id, dtm)
         return _setup_tb(logdir=logdir)
     else:
-        _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
+        _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
         sys.exit()
 
     print(f"experiment_id: {experiment_id}", dtm)
@@ -185,13 +186,27 @@ def _setup_tb(logdir):
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
-def _ensure_scripts():
+def _ensure_scripts(extra_headers):
     ssh_session = fabric.Connection("mila")
     retr = ssh_session.run("mktemp -d -t mila_tools-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
-    scripts_path = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
-    for file_path in os.listdir(scripts_path):
-        ssh_session.put(scripts_path + file_path, tmp_folder + "/")
+    for file_path in os.listdir(SCRIPTS_PATH):
+        script_path = SCRIPTS_PATH + file_path
+        if extra_headers and file_path in ("localenv_sweep.sh", "srun_python.sh"):
+            with open(SCRIPTS_PATH + file_path) as fin:
+                rows = fin.readlines()
+
+            script_path = "/tmp/" + file_path
+            with open(script_path, "w") as fout:
+                for flag_idx in range(1, len(rows)):
+                    old = rows[flag_idx - 1].strip()
+                    new = rows[flag_idx].strip()
+                    if old[:7] in ("#SBATCH", "") and new[:7] not in ("#SBATCH", ""):
+                        rows.insert(flag_idx, "\n" + extra_headers + "\n")
+                        break
+                fout.write("".join(rows))
+
+        ssh_session.put(script_path, tmp_folder + "/")
     return tmp_folder, ssh_session
 
 
@@ -204,10 +219,10 @@ def log_cmd(cmd, retr):
 
 
 @timeit
-def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, proc_num):
+def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header):
     git_url = git_repo.remotes[0].url
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        scripts_folder = executor.submit(_ensure_scripts)
+        scripts_folder = executor.submit(_ensure_scripts, extra_slurm_header)
         code_version = git_sync(experiment_id, git_repo)
 
         _, entrypoint = os.path.split(sys.argv[0])
