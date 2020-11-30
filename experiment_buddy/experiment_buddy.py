@@ -188,7 +188,7 @@ def _setup_tb(logdir):
 
 def _ensure_scripts(extra_headers):
     ssh_session = fabric.Connection("mila")
-    retr = ssh_session.run("mktemp -d -t mila_tools-XXXXXXXXXX")
+    retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
         script_path = SCRIPTS_PATH + file_path

@@ -2,7 +2,7 @@ import math
 
 import jax.experimental.optimizers
 
-import mila_tools
+import experiment_buddy
 
 initial_lr = .0001
 
@@ -17,13 +17,13 @@ weight_norm = 0.00
 num_epochs = 1000000
 eval_every = math.ceil(num_epochs / 1000)
 
-mila_tools.register(locals())
+experiment_buddy.register(locals())
 
 ################################################################
 # Derivative parameters
 ################################################################
 learning_rate = jax.experimental.optimizers.inverse_time_decay(initial_lr, decay_steps, decay_factor, staircase=True)
 
-mila_tools.deploy(cluster=True, sweep_yaml="", extra_slurm_headers="""
+experiment_buddy.deploy(cluster=True, sweep_yaml="", extra_slurm_headers="""
 #SBATCH --mem=48GB
 """)
