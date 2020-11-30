@@ -1,15 +1,14 @@
 import concurrent.futures
 import datetime
-import os
-import subprocess
-import sys
-import time
-import types
-
 import fabric
 import git
 import matplotlib.pyplot as plt
+import os
+import subprocess
+import sys
 import tensorboardX
+import time
+import types
 import wandb
 import wandb.cli
 import yaml
@@ -18,9 +17,13 @@ wandb_escape = "^"
 hyperparams = None
 tb = None
 SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
+PROFILE = False
 
 
 def timeit(method):
+    if not PROFILE:
+        return method
+
     def timed(*args, **kw):
         ts = time.time()
         result = method(*args, **kw)
@@ -152,15 +155,12 @@ def deploy(cluster, sweep_yaml, extra_slurm_headers=None, proc_num=1):
         return _setup_tb(logdir=logdir)
 
     experiment_id = _ask_experiment_id(cluster, sweep_yaml)
-    # experiment_id = "profiling"
     if local_run:
         logdir = os.path.join(git_repo.working_dir, "tensorboard/", experiment_id, dtm)
         return _setup_tb(logdir=logdir)
     else:
         _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
         sys.exit()
-
-    print(f"experiment_id: {experiment_id}", dtm)
 
 
 def _ask_experiment_id(cluster, sweep):
@@ -188,7 +188,7 @@ def _setup_tb(logdir):
 
 def _ensure_scripts(extra_headers):
     ssh_session = fabric.Connection("mila")
-    retr = ssh_session.run("mktemp -d -t mila_tools-XXXXXXXXXX")
+    retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
         script_path = SCRIPTS_PATH + file_path
@@ -246,7 +246,7 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
             ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
 
-    # TODO: assert -e git+git@github.com:manuel-delverme/mila_tools.git#egg=mila_tools is in requirements.txt
+    # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
