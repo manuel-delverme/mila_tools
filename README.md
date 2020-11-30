@@ -1,4 +1,5 @@
 ~`mila_tools` aims to reduce the overhead to deploy experiments on mila clusters.~
+
 `experiment_buddy` aims to reduce the overhead to deploy experiments on servers.
 
 
