@@ -15,7 +15,6 @@ momentum_mass = 0.99
 weight_norm = 0.00
 
 num_epochs = 1000000
-eval_every = math.ceil(num_epochs / 1000)
 
 experiment_buddy.register(locals())
 
@@ -23,7 +22,6 @@ experiment_buddy.register(locals())
 # Derivative parameters
 ################################################################
 learning_rate = jax.experimental.optimizers.inverse_time_decay(initial_lr, decay_steps, decay_factor, staircase=True)
+eval_every = math.ceil(num_epochs / 1000)
 
-experiment_buddy.deploy(cluster=True, sweep_yaml="", extra_slurm_headers="""
-#SBATCH --mem=48GB
-""")
+tensorboard = experiment_buddy.deploy(use_remote=True, sweep_yaml="")

@@ -1,6 +1,6 @@
 from setuptools import setup, find_namespace_packages
 
-install_requires = ['GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric']
+install_requires = ['GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle']
 
 setup(
     name='experiment_buddy',
