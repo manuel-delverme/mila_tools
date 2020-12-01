@@ -205,18 +205,20 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
 
 
 def _ask_experiment_id(cluster, sweep):
-    import tkinter.simpledialog
-
-    root = tkinter.Tk()
     title = f'{"[CLUSTER" if cluster else "[LOCAL"}'
     if sweep:
         title = f"{title}-SWEEP"
     title = f"{title}]"
 
-    experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
-    experiment_id = (experiment_id or "no_id").replace(" ", "_")
-    root.destroy()
+    try:
+        import tkinter.simpledialog
+        root = tkinter.Tk()
+        experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
+        root.destroy()
+    except:
+        experiment_id = input(f"{title} \nexperiment_id")
 
+    experiment_id = (experiment_id or "no_id").replace(" ", "_")
     if cluster:
         experiment_id = f"[CLUSTER] {experiment_id}"
     return experiment_id
