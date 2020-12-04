@@ -165,8 +165,8 @@ class WandbWrapper:
 
 @timeit
 def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
-    debug = False  # TODO: removeme
+    # debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
+    debug = False # TODO: removeme
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
 
     local_run = not use_remote
@@ -174,7 +174,7 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
     except git.InvalidGitRepositoryError:
-        raise ValueError("the main file be in the repository root")
+        raise ValueError("the main file be in the repository root, no git init in example folder!")
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
@@ -199,7 +199,7 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
     else:
-        raise NotImplemented
+        # raise NotImplemented
         _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
         sys.exit()
 
@@ -230,7 +230,8 @@ def _setup_tb(logdir):
 
 
 def _ensure_scripts(extra_headers):
-    ssh_session = fabric.Connection("mila")
+    # ssh_session = fabric.Connection("mila")
+    ssh_session = fabric.Connection(host="root@159.69.11.199") # root@159.69.11.199
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
@@ -281,7 +282,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
-    print(ssh_command)
     for proc_num in range(num_repeats):
         if proc_num > 0:
             time.sleep(1)
@@ -289,7 +289,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         if proc_num > 1:
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
-
         ssh_session.run(ssh_command)
 
 
