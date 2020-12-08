@@ -217,6 +217,7 @@ def _ask_experiment_id(cluster, sweep):
     try:
         import tkinter.simpledialog
         root = tkinter.Tk()
+        root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
         root.destroy()
     except:
