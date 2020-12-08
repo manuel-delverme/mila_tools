@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import time
+import tkinter.simpledialog
 import types
 
 import cloudpickle
@@ -215,7 +216,6 @@ def _ask_experiment_id(cluster, sweep):
     title = f"{title}]"
 
     try:
-        import tkinter.simpledialog
         root = tkinter.Tk()
         root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")

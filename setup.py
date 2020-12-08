@@ -1,7 +1,7 @@
 from setuptools import setup, find_namespace_packages
 
 install_requires = [
-    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'jax', 'git', 'torch', 'tkinter'
+    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'jax', 'tkinter'
 ]
 
 setup(
