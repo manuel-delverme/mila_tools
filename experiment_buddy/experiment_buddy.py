@@ -122,10 +122,10 @@ class WandbWrapper:
         for k, v in hyperparams.items():
             register_param(k, v)
 
-    def add_scalar(self, tag, scalar_value, global_step=None):
+    def add_scalar(self, tag, scalar_value, global_step):
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
         if self.tensorboard:
-            self.tensorboard.add_scalar(tag, scalar_value, global_step=None)
+            self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
     def add_scalar_dict(self, scalar_dict, global_step=None):
         raise NotImplementedError
