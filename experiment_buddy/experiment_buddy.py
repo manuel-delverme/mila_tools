@@ -1,15 +1,16 @@
-import cloudpickle
 import concurrent.futures
 import datetime
+import os
+import sys
+import time
+import types
+
+import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
-import os
-import sys
 import tensorboardX
-import time
 import torch
-import types
 import wandb
 import wandb.cli
 
@@ -115,7 +116,8 @@ class WandbWrapper:
                     print(f"setting {name}={str(value)}")
                     setattr(wandb.config, name, str(value))
                 else:
-                    print(f"not setting {name} to {str(value)}, str because its already {getattr(wandb.config, name)}, {type(getattr(wandb.config, name))}")
+                    print(
+                        f"not setting {name} to {str(value)}, str because its already {getattr(wandb.config, name)}, {type(getattr(wandb.config, name))}")
 
         for k, v in hyperparams.items():
             register_param(k, v)
@@ -166,7 +168,7 @@ class WandbWrapper:
 @timeit
 def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     # debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
-    debug = False # TODO: removeme
+    debug = False  # TODO: removeme
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
 
     local_run = not use_remote
@@ -191,13 +193,15 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
+                            local_tensorboard=_setup_tb(logdir=tb_dir))
 
     experiment_id = _ask_experiment_id(use_remote, sweep_yaml)
     print(experiment_id)
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
+                            local_tensorboard=_setup_tb(logdir=tb_dir))
     else:
         # raise NotImplemented
         _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
@@ -230,8 +234,16 @@ def _setup_tb(logdir):
 
 
 def _ensure_scripts(extra_headers):
-    # ssh_session = fabric.Connection("mila")
-    ssh_session = fabric.Connection(host="root@159.69.11.199") # root@159.69.11.199
+    try:
+        host = os.environ["MY_BUDDY_HOSTNAME"]
+        passwd = os.environ["MY_BUDDY_PASSWORD"]
+    except KeyError:
+        raise EnvironmentError(
+            "Please add your server credentials as environment variables like so:"
+            "\nMY_BUDDY_HOSTNAME=hostname\nMY_BODY_PASSWORD=host password"
+        )
+
+    ssh_session = fabric.Connection(host=host, connect_kwargs={"password": passwd})
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
