@@ -30,8 +30,11 @@ from jax.experimental import stax
 from jax.experimental.stax import Dense, Relu, LogSoftmax
 
 import config
-from . import config
-from . import datasets
+import datasets
+
+
+# from . import config
+# from . import datasets
 
 
 def loss(params, batch):
@@ -98,8 +101,8 @@ if __name__ == "__main__":
         params = get_params(opt_state)
         train_acc = accuracy(params, (train_images, train_labels))
         test_acc = accuracy(params, (test_images, test_labels))
-        config.tensorboard.add_scalar("train_acc", train_acc)
-        config.tensorboard.add_scalar("test_acc", test_acc)
-        # print("Epoch {} in {:0.2f} sec".format(epoch, epoch_time))
-        # print("Training set accuracy {}".format(train_acc))
-        # print("Test set accuracy {}".format(test_acc))
+        tensorboard.add_scalar("train_acc", float(train_acc), epoch)
+        tensorboard.add_scalar("test_acc", float(test_acc), epoch)
+        print("Epoch {} in {:0.2f} sec".format(epoch, epoch_time))
+        print("Training set accuracy {}".format(train_acc))
+        print("Test set accuracy {}".format(test_acc))
