@@ -306,8 +306,8 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
     git_url = git_repo.remotes[0].url
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         scripts_folder = executor.submit(_ensure_scripts, "")
-        # code_version = git_sync(experiment_id, git_repo)
-        code_version = 123
+        code_version = git_sync(experiment_id, git_repo)
+        # code_version = 123
 
         _, entrypoint = os.path.split(sys.argv[0])
         if sweep_yaml:
@@ -315,7 +315,7 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         else:
             _, entrypoint = os.path.split(sys.argv[0])
             ssh_args = (git_url, entrypoint, code_version)
-            ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
+            ssh_command = "bash -l {0}/run_experiment.sh {1} {2}" #  {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
