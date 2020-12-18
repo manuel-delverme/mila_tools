@@ -1,17 +1,21 @@
-import cloudpickle
 import concurrent.futures
+from paramiko.ssh_exception import SSHException
 import datetime
+import os
+import sys
+import time
+import tkinter.simpledialog
+import types
+
+import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
-import os
-import sys
 import tensorboardX
-import time
 import torch
-import types
 import wandb
 import wandb.cli
+import logging
 
 wandb_escape = "^"
 hyperparams = None
@@ -115,15 +119,18 @@ class WandbWrapper:
                     print(f"setting {name}={str(value)}")
                     setattr(wandb.config, name, str(value))
                 else:
-                    print(f"not setting {name} to {str(value)}, str because its already {getattr(wandb.config, name)}, {type(getattr(wandb.config, name))}")
+                    print(
+                        f"not setting {name} to {str(value)}, str because its already {getattr(wandb.config, name)}, {type(getattr(wandb.config, name))}")
 
         for k, v in hyperparams.items():
             register_param(k, v)
 
-    def add_scalar(self, tag, scalar_value, global_step=None):
+        # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
+
+    def add_scalar(self, tag, scalar_value, global_step):
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
         if self.tensorboard:
-            self.tensorboard.add_scalar(tag, scalar_value, global_step=None)
+            self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
     def add_scalar_dict(self, scalar_dict, global_step=None):
         raise NotImplementedError
@@ -165,7 +172,7 @@ class WandbWrapper:
 
 @timeit
 def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
+    # debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
     debug = False  # TODO: removeme
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
 
@@ -174,7 +181,7 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
     except git.InvalidGitRepositoryError:
-        raise ValueError("the main file be in the repository root")
+        raise ValueError("the main file be in the repository root, no git init in example folder!")
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
@@ -191,15 +198,17 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
+                            local_tensorboard=_setup_tb(logdir=tb_dir))
 
     experiment_id = _ask_experiment_id(use_remote, sweep_yaml)
-    print(experiment_id)
+    print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
     else:
-        raise NotImplemented
+        # raise NotImplemented
         _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
         sys.exit()
 
@@ -211,8 +220,8 @@ def _ask_experiment_id(cluster, sweep):
     title = f"{title}]"
 
     try:
-        import tkinter.simpledialog
         root = tkinter.Tk()
+        root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
         root.destroy()
     except:
@@ -229,8 +238,39 @@ def _setup_tb(logdir):
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
+def _ssh_session_connected():
+    """ TODO: move this to utils.py or to a class (better) """
+
+    kwargs_connection = {}
+
+    try:
+        kwargs_connection["host"] = os.environ["hostname"]
+    except KeyError:
+        raise EnvironmentError("Please add your hostname as env:" "\nhostname")
+
+    try:
+        kwargs_connection["connect_kwargs"] = {"password": os.environ["password"]}
+    except KeyError:
+        logging.warning("No ssh password given, if you did not ssh-copy-id, add it to the env as: MY_BUDDY_HOST_PASSWORD")
+
+    try:
+        kwargs_connection["port"] = os.environ["port"]
+    except KeyError:
+        logging.warning("No ssh port given, if you need it, add it to the env as: MY_BUDDY_HOST_PORT")
+
+    try:
+        ssh_session = fabric.Connection(**kwargs_connection)
+        ssh_session.run("")
+    except SSHException as e:
+        raise SSHException("SSH connection failed!,"
+                           " Check if you did ssh-copi-id, "
+                           "if not, you may need to add the password to the env as password")
+
+    return ssh_session
+
+
 def _ensure_scripts(extra_headers):
-    ssh_session = fabric.Connection("mila")
+    ssh_session = _ssh_session_connected()
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
@@ -281,7 +321,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
-    print(ssh_command)
     for proc_num in range(num_repeats):
         if proc_num > 0:
             time.sleep(1)
@@ -289,7 +328,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         if proc_num > 1:
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
-
         ssh_session.run(ssh_command)
 
 

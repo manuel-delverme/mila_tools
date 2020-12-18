@@ -25,8 +25,8 @@ log "pwd is now $(pwd)"
 
 # # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
 log "Setting up venv @ $FOLDER/venv..."
-# python -m pip install virtualenv-clone
-python -m virtualenv "venv"
+python3 -m pip install virtualenv
+python3 -m virtualenv "venv"
 # python -m clonevirtualenv "$HOME/venv" "venv"
 
 # # shellcheck disable=SC1090
@@ -36,8 +36,8 @@ python -m virtualenv "venv"
 # shellcheck disable=SC1090
 # source $HOME/venv/bin/activate
 
-python -m pip install --upgrade pip
-python -m pip install -r "requirements.txt" --exists-action w
+python3 -m pip install --upgrade pip
+#python3 -m pip install -r "requirements.txt" --exists-action w
 
-log "python $2"
-byobu python -O -u $2
+log "HELLO python3 $2"
+byobu python3 -O -u $2
