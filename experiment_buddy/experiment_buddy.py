@@ -16,6 +16,7 @@ import torch
 import wandb
 import wandb.cli
 import logging
+import ast
 
 wandb_escape = "^"
 hyperparams = None
@@ -60,14 +61,10 @@ def register(config_params):
 
 
 def _cast_param(v):
-    if "." in v:
-        v = float(v)
-    else:
-        try:
-            v = int(v)
-        except ValueError:
-            pass
-    return v
+    try:
+        return ast.literal_eval(v)
+    except ValueError:
+        return v
 
 
 def _valid_hyperparam(key, value):
