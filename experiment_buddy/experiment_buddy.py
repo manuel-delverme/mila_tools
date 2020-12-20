@@ -1,6 +1,6 @@
 import concurrent.futures
-from paramiko.ssh_exception import SSHException
 import datetime
+import logging
 import os
 import sys
 import time
@@ -15,28 +15,16 @@ import tensorboardX
 import torch
 import wandb
 import wandb.cli
-import logging
+from paramiko.ssh_exception import SSHException
+
+from .git_helpers import git_sync
+from .utils import timeit
 
 wandb_escape = "^"
 hyperparams = None
 tb = None
-# SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
-SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "./slurm_scripts/")
-PROFILE = False
-
-
-def timeit(method):
-    if not PROFILE:
-        return method
-
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-        print(f'{method.__name__!r}  {(te - ts):2.2f} s')
-        return result
-
-    return timed
+SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
+# SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "./slurm_scripts/")
 
 
 def register(config_params):
@@ -206,7 +194,8 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
+                            local_tensorboard=_setup_tb(logdir=tb_dir))
         # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
     else:
         # raise NotImplemented
@@ -223,10 +212,12 @@ def _ask_experiment_id(cluster, sweep):
     try:
         root = tkinter.Tk()
         root.withdraw()
-        experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
+        experiment_id = "dummy"
+        # experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
         root.destroy()
     except:
-        experiment_id = input(f"Running on {title} \ndescribe your experiment (experiment_id):\n")
+        # experiment_id = input(f"Running on {title} \ndescribe your experiment (experiment_id):\n")
+        experiment_id = "dummy"
 
     experiment_id = (experiment_id or "no_id").replace(" ", "_")
     if cluster:
@@ -316,16 +307,14 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
     git_url = git_repo.remotes[0].url
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         scripts_folder = executor.submit(_ensure_scripts, "")
-        code_version = git_sync(experiment_id, git_repo)
-        # code_version = 123
-        # code_version = hash commit
+        hash_commit = git_sync(experiment_id, git_repo)
 
         _, entrypoint = os.path.split(sys.argv[0])
         if sweep_yaml:
             raise NotImplementedError
         else:
             _, entrypoint = os.path.split(sys.argv[0])
-            ssh_args = (git_url, entrypoint, code_version)
+            ssh_args = (git_url, entrypoint, hash_commit)
             ssh_command = "bash -l {0}/run_experiment.sh {1} {2}"  # {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
 
@@ -340,15 +329,3 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
         ssh_session.run(ssh_command)
-
-
-@timeit
-def git_sync(experiment_id, git_repo):
-    # 2) commits everything to git with the name as message (so i r later reproduce the same experiment)
-    os.system(f"git add .")
-    os.system(f"git commit -m '{experiment_id}'")
-    # TODO: ideally the commits should go to a parallel branch so the one in use is not filled with versioning checkpoints
-    # 3) pushes the changes to git
-    os.system("git push")  # TODO: only if commit
-    code_version = git_repo.commit().hexsha
-    return code_version
