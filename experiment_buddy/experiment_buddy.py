@@ -206,7 +206,7 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
         # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
     else:
         # raise NotImplemented
