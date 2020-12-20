@@ -1,6 +1,0 @@
-[submodule "tmp_examples"]
-	path = tmp_examples
-	url = https://github.com/ioneliabuzatu/tmp_examples
-[submodule "examples"]
-	path = examples
-	url = https://github.com/ministry-of-silly-code/examples

@@ -20,7 +20,8 @@ import logging
 wandb_escape = "^"
 hyperparams = None
 tb = None
-SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
+# SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
+SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "./slurm_scripts/")
 PROFILE = False
 
 
@@ -238,39 +239,48 @@ def _setup_tb(logdir):
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
-def _ssh_session_connected():
-    """ TODO: move this to utils.py or to a class (better) """
+def _open_ssh_session():
+    """ TODO: move this to utils.py or to a class (better)
+        TODO add time-out for unknown host
+     """
 
     kwargs_connection = {}
 
     try:
-        kwargs_connection["host"] = os.environ["hostname"]
+        kwargs_connection["host"] = os.environ["BUDDY_HOSTNAME"]
     except KeyError:
-        raise EnvironmentError("Please add your hostname as env:" "\nhostname")
+        raise EnvironmentError("Please add your hostname to the anv as export BUDDY_HOSTNAME='your-buddy-hostname'")
 
     try:
-        kwargs_connection["connect_kwargs"] = {"password": os.environ["password"]}
+        kwargs_connection["connect_kwargs"] = {"password": os.environ["BUDDY_PASSWORD"]}
     except KeyError:
-        logging.warning("No ssh password given, if you did not ssh-copy-id, add it to the env as: MY_BUDDY_HOST_PASSWORD")
+        pass
 
     try:
-        kwargs_connection["port"] = os.environ["port"]
+        kwargs_connection["port"] = os.environ["BUDDY_PORT"]
     except KeyError:
-        logging.warning("No ssh port given, if you need it, add it to the env as: MY_BUDDY_HOST_PORT")
+        pass
 
     try:
-        ssh_session = fabric.Connection(**kwargs_connection)
+        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=2)
         ssh_session.run("")
     except SSHException as e:
+
+        logging.warning("No ssh password given, if you did not ssh-copy-id, "
+                        "add it to the env as: export BUDDY_PASSWORD='your-buddy-password'")
+
+        logging.warning("No ssh port given, if you need it, "
+                        "add it to the env as: as export BUDDY_PORT='your-buddy-port'")
+
         raise SSHException("SSH connection failed!,"
-                           " Check if you did ssh-copi-id, "
+                           "Check if you did ssh-copi-id,"
                            "if not, you may need to add the password to the env as password")
 
     return ssh_session
 
 
 def _ensure_scripts(extra_headers):
-    ssh_session = _ssh_session_connected()
+    ssh_session = _open_ssh_session()
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
@@ -308,6 +318,7 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         scripts_folder = executor.submit(_ensure_scripts, "")
         code_version = git_sync(experiment_id, git_repo)
         # code_version = 123
+        # code_version = hash commit
 
         _, entrypoint = os.path.split(sys.argv[0])
         if sweep_yaml:
@@ -315,7 +326,7 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         else:
             _, entrypoint = os.path.split(sys.argv[0])
             ssh_args = (git_url, entrypoint, code_version)
-            ssh_command = "bash -l {0}/run_experiment.sh {1} {2}" #  {3}"
+            ssh_command = "bash -l {0}/run_experiment.sh {1} {2}"  # {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
