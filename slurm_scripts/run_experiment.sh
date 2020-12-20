@@ -20,13 +20,14 @@ log "FOLDER=$FOLDER"
 log "downloading source code from $1 to $FOLDER"
 git clone $1 $FOLDER/
 cd $FOLDER || exit
-git clone "https://github.com/ministry-of-silly-code/experiment_buddy"
+git clone https://github.com/ministry-of-silly-code/experiment_buddy.git@local
 git checkout $3
 log "pwd is now $(pwd)"
 
 # # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
 log "Setting up venv @ $FOLDER/venv..."
 python3 -m pip install virtualenv jax jaxlib cloudpickle
+python3 -m pip install git+https://github.com/ministry-of-silly-code/experiment_buddy.git@local --user
 python3 -m virtualenv "venv"
 # python -m clonevirtualenv "$HOME/venv" "venv"
 
