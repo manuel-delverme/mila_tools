@@ -24,18 +24,20 @@ git checkout $3
 log "pwd is now $(pwd)"
 
 # # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
-log "Setting up venv @ $FOLDER/venv..."
-python3 -m virtualenv "venv"
+log "Setting up venv @ $HOME/venv..."
+python3 -m virtualenv $HOME/"venv"
 # python -m clonevirtualenv "$HOME/venv" "venv"
 
 # log "Using shared venv @ $HOME/venv"
 # shellcheck disable=SC1090
 source $HOME/venv/bin/activate
-python3 -m pip install virtualenv jax jaxlib cloudpickle
-log "installing torch woth --no--cache-dir"
-pip3 --no-cache-dir install torch
-
 python3 -m pip install --upgrade pip
+python3 -m pip install virtualenv jax jaxlib cloudpickle
+log "installing torch with --no--cache-dir"
+pip3 --no-cache-dir install torch
+log "installing experiment_buddy"
+pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy#egg=experiment_buddy
+
 #python3 -m pip install -r "requirements.txt" --exists-action w
 
 log "python3 $2"
