@@ -19,8 +19,11 @@ Example: (Updated)
 1. `python3 -m virtualenv venv --python=python3.8`
 1. `source venv/bin/activate`
 1. Add cluster private-key to: `https://github.com/settings/keys` if you dont know this yet, check this out [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account)
-1. `pip install wandb && wandb init` then copy api wandb key to set up the wandb in your local repo or do export WANDB_API_KEY = your wandb key which can be found here:https://wandb.ai/settings
+1. `pip install wandb && wandb init` there are two ways to set up wandb: 
+    - set up wandb init from the cmd
+    - or set export  WANDB_API_KEY = your wandb key which can be found here: https://wandb.ai/settings
 1. `python -m pip install jax jaxlib` # Local requirements
 1. `python -m examples.mnist_classifier` 
 
 
+Supports: Unix based OS
