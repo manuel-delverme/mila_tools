@@ -36,7 +36,7 @@ python3 -m pip install virtualenv jax jaxlib cloudpickle
 log "installing torch with --no--cache-dir"
 pip3 --no-cache-dir install torch
 log "installing experiment_buddy"
-pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy#egg=experiment_buddy
+pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy@ionelia#egg=experiment_buddy
 
 #python3 -m pip install -r "requirements.txt" --exists-action w
 
