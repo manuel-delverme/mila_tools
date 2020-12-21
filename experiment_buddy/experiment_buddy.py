@@ -330,5 +330,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         if proc_num > 1:
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
-        ssh_session.run("export WHEREAMI=remote")
+
+        ssh_session.run("export WHEREAMI_BUDDY=remote")
         ssh_session.run(ssh_command)

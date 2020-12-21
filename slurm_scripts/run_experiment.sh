@@ -39,6 +39,7 @@ log "installing experiment_buddy"
 pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy@ionelia#egg=experiment_buddy
 
 #python3 -m pip install -r "requirements.txt" --exists-action w
+export SLURM_JOB_ID=1234
 
 log "python3 $2"
 #byobu python3 -O -u $2
