@@ -83,6 +83,8 @@ class WandbWrapper:
     def __init__(self, experiment_id, project_name, local_tensorboard=None):
         # proj name is git root folder name
         print(f"wandb.init(project={project_name}, name={experiment_id})")
+        os.environ["WANDB_API_KEY"] = "62b3ff92fda1304714df4e51375d25f052e52253"
+        # wandb.login(relogin=True, key="62b3ff92fda1304714df4e51375d25f052e52253")
 
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
@@ -321,6 +323,7 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
+    ssh_command = 'bash -l /tmp/experiment_buddy-ZZ1T7E6hoB/run_experiment.sh https://github.com/ministry-of-silly-code/examples mnist_classifier_tmp.py'
     for proc_num in range(num_repeats):
         if proc_num > 0:
             time.sleep(1)
