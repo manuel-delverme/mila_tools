@@ -323,7 +323,6 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
-    ssh_command = 'bash -l /tmp/experiment_buddy-ZZ1T7E6hoB/run_experiment.sh https://github.com/ministry-of-silly-code/examples mnist_classifier_tmp.py'
     for proc_num in range(num_repeats):
         if proc_num > 0:
             time.sleep(1)
@@ -331,4 +330,5 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
         if proc_num > 1:
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
+        ssh_session.run("export WHEREAMI=remote")
         ssh_session.run(ssh_command)
