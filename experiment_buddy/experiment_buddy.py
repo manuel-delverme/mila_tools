@@ -24,6 +24,8 @@ wandb_escape = "^"
 hyperparams = None
 tb = None
 SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
+
+
 # SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "./slurm_scripts/")
 
 
@@ -169,10 +171,7 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
 
     local_run = not use_remote
 
-    try:
-        git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
-    except git.InvalidGitRepositoryError:
-        raise ValueError("the main file be in the repository root, no git init in example folder!")
+    git_repo = get_git_repository()
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
@@ -333,3 +332,26 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
 
         ssh_session.run("export WHEREAMI_BUDDY=remote")
         ssh_session.run(ssh_command)
+
+
+def get_git_repository():
+    def is_git_repo(path):
+        try:
+            _ = git.Repo(path)
+            return True
+        except git.InvalidGitRepositoryError:
+            return False
+
+    path = os.path.dirname(hyperparams["__file__"])
+    while not is_git_repo(path):
+        os.chdir("..")
+        path = os.getcwd()
+
+    try:
+        git_repo = git.Repo(path)
+    except git.InvalidGitRepositoryError:
+        raise ValueError("No git init in the current folder and not in any of its subdirectories!")
+
+    os.chdir(os.path.dirname(hyperparams["__file__"]))
+
+    return git_repo
