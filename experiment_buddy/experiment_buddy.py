@@ -342,13 +342,13 @@ def get_git_repository():
         except git.InvalidGitRepositoryError:
             return False
 
-    path = os.path.dirname(hyperparams["__file__"])
-    while not is_git_repo(path):
+    current_absolute_path = os.path.dirname(hyperparams["__file__"])
+    while not is_git_repo(current_absolute_path):
         os.chdir("..")
-        path = os.getcwd()
+        current_absolute_path = os.getcwd()
 
     try:
-        git_repo = git.Repo(path)
+        git_repo = git.Repo(current_absolute_path)
     except git.InvalidGitRepositoryError:
         raise ValueError("No git init in the current folder and not in any of its subdirectories!")
 
