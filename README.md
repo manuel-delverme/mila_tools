@@ -25,5 +25,8 @@ Example: (Updated)
 1. `python -m pip install jax jaxlib` # Local requirements
 1. `python -m examples.mnist_classifier` 
 
+More details on experiment-buddy:
+1. experiment-buddy will commit to a branch called "experiment-buddy" to the first git repo found in the reverse os walk tree
+2. Supports: Unix based OS
 
-Supports: Unix based OS
+
