@@ -23,7 +23,7 @@ VERSION = '0.0.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'jax', 'torch'
+    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'jax'
     # 'requests', 'maya', 'records',
 ]
 
