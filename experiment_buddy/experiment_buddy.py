@@ -78,16 +78,6 @@ def _valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    _global_step = 0
-
-    @property
-    def global_step(self):
-        return self._global_step
-
-    @global_step.setter
-    def global_step(self, value):
-        self._global_step = value
-
     def __init__(self, experiment_id, project_name, local_tensorboard=None):
         # proj name is git root folder name
         print(f"wandb.init(project={project_name}, name={experiment_id})")
@@ -124,12 +114,12 @@ class WandbWrapper:
 
         # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
 
-    def add_scalar(self, tag, scalar_value, global_step):
+    def add_scalar(self, tag: str, scalar_value: float, global_step: int):
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
-    def add_scalar_dict(self, scalar_dict, global_step=None):
+    def add_scalar_dict(self, scalar_dict, global_step):
         raise NotImplementedError
         # This is not a tensorboard funciton
         self.run.log(scalar_dict, step=global_step, commit=False)
@@ -162,6 +152,7 @@ class WandbWrapper:
                 cloudpickle.dump(obj, local_path)
 
         self.run.save(local_path)
+        return local_path
 
     def watch(self, *args, **kwargs):
         self.run.watch(*args, **kwargs)
@@ -169,8 +160,8 @@ class WandbWrapper:
 
 @timeit
 def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
-    # debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
-    debug = False  # TODO: removeme
+    debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
+    # debug = False  # TODO: removeme
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
 
     local_run = not use_remote
@@ -202,7 +193,7 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
-        WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
         # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
     else:
         # raise NotImplemented
