@@ -1,5 +1,5 @@
+import ast
 import concurrent.futures
-from paramiko.ssh_exception import SSHException
 import datetime
 import logging
 import os
@@ -16,8 +16,7 @@ import tensorboardX
 import torch
 import wandb
 import wandb.cli
-import logging
-import ast
+from paramiko.ssh_exception import SSHException
 
 wandb_escape = "^"
 hyperparams = None
@@ -161,16 +160,14 @@ class WandbWrapper:
 
 @timeit
 def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys()  # or __debug__
-    # debug = False  # TODO: removeme
+    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
-
     local_run = not use_remote
 
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
     except git.InvalidGitRepositoryError:
-        raise ValueError("the main file be in the repository root, no git init in example folder!")
+        raise ValueError(f"Could not find a git repo in {os.path.dirname(hyperparams['__file__'])}")
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
