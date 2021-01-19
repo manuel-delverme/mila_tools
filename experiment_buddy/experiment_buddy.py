@@ -227,7 +227,6 @@ def _open_ssh_session(hostname):
     """ TODO: move this to utils.py or to a class (better)
         TODO add time-out for unknown host
      """
-
     kwargs_connection = {
         "host": hostname
     }
@@ -240,16 +239,9 @@ def _open_ssh_session(hostname):
         ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=2)
         ssh_session.run("")
     except SSHException as e:
-
-        logging.warning("No ssh password given, if you did not ssh-copy-id, "
-                        "add it to the env as: export BUDDY_PASSWORD='your-buddy-password'")
-
-        logging.warning("No ssh port given, if you need it, "
-                        "add it to the env as: as export BUDDY_PORT='your-buddy-port'")
-
         raise SSHException("SSH connection failed!,"
-                           "Check if you did ssh-copi-id,"
-                           "if not, you may need to add the password to the env as password")
+                           f"Make sure you can successfully run `ssh {hostname}` with no parameters, any parameters should be set in the ssh_config file"
+                           "If you need a password to authenticate set the Environment variable BUDDY_PASSWORD.")
 
     return ssh_session
 
