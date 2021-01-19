@@ -159,10 +159,10 @@ class WandbWrapper:
 
 
 @timeit
-def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1) -> WandbWrapper:
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
-    local_run = not use_remote
+    local_run = not host
 
     try:
         git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
@@ -187,14 +187,14 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
                             local_tensorboard=_setup_tb(logdir=tb_dir))
 
-    experiment_id = _ask_experiment_id(use_remote, sweep_yaml)
+    experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
     else:
         # raise NotImplemented
-        _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
+        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num)
         sys.exit()
 
 
@@ -223,25 +223,16 @@ def _setup_tb(logdir):
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
-def _open_ssh_session():
+def _open_ssh_session(hostname):
     """ TODO: move this to utils.py or to a class (better)
         TODO add time-out for unknown host
      """
 
-    kwargs_connection = {}
-
-    try:
-        kwargs_connection["host"] = os.environ["BUDDY_HOSTNAME"]
-    except KeyError:
-        raise EnvironmentError("Please add your hostname to the anv as export BUDDY_HOSTNAME='your-buddy-hostname'")
-
+    kwargs_connection = {
+        "host": hostname
+    }
     try:
         kwargs_connection["connect_kwargs"] = {"password": os.environ["BUDDY_PASSWORD"]}
-    except KeyError:
-        pass
-
-    try:
-        kwargs_connection["port"] = os.environ["BUDDY_PORT"]
     except KeyError:
         pass
 
@@ -263,8 +254,8 @@ def _open_ssh_session():
     return ssh_session
 
 
-def _ensure_scripts(extra_headers):
-    ssh_session = _open_ssh_session()
+def _ensure_scripts(hostname, extra_headers):
+    ssh_session = _open_ssh_session(hostname)
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     tmp_folder = retr.stdout.strip()
     for file_path in os.listdir(SCRIPTS_PATH):
@@ -296,10 +287,11 @@ def log_cmd(cmd, retr):
 
 
 @timeit
-def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, proc_num):
+def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num):
     git_url = git_repo.remotes[0].url
+    _ensure_scripts(hostname, "")
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        scripts_folder = executor.submit(_ensure_scripts, "")
+        scripts_folder = executor.submit(_ensure_scripts, hostname, "")
         hash_commit = git_sync(experiment_id, git_repo)
 
         _, entrypoint = os.path.split(sys.argv[0])
