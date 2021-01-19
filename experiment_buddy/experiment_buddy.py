@@ -192,7 +192,6 @@ def deploy(use_remote, sweep_yaml, proc_num=1) -> WandbWrapper:
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
-        # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
     else:
         # raise NotImplemented
         _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
@@ -327,11 +326,13 @@ def _commit_and_sendjob(experiment_id, sweep_yaml: str, git_repo, project_name, 
 
 @timeit
 def git_sync(experiment_id, git_repo):
-    # 2) commits everything to git with the name as message (so i r later reproduce the same experiment)
+    active_branch = git_repo.active_branch.name
+    os.system(f"git checkout -b snapshot_{active_branch}")  # move changest to snapshot branch
     os.system(f"git add .")
     os.system(f"git commit -m '{experiment_id}'")
-    # TODO: ideally the commits should go to a parallel branch so the one in use is not filled with versioning checkpoints
-    # 3) pushes the changes to git
-    os.system("git push")  # TODO: only if commit
-    code_version = git_repo.commit().hexsha
-    return code_version
+    git_hash = git_repo.commit().hexsha
+    os.system("git push")  # send to online repo
+    os.system(f"git checkout {active_branch}")  # return on active branch
+    os.system(f"git cherry-pick {git_hash}")  # copy the change to current
+    os.system(f"git reset HEAD~1")  # untrack the changes
+    return git_hash
