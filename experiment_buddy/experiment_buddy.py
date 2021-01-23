@@ -149,7 +149,6 @@ class WandbWrapper:
                 torch.save(obj, fout)
             except Exception as e:
                 raise e
-                cloudpickle.dump(obj, local_path)
 
         self.run.save(local_path)
         return local_path
