@@ -143,12 +143,12 @@ class WandbWrapper:
 
     def add_object(self, tag, obj, global_step):
         # This is not a tensorboard function
-        local_path = os.path.join(self.objects_path, f"{tag}-{global_step}.pth")
+        local_path = os.path.join(self.objects_path, f"{tag}-{global_step}.pt")
         with open(local_path, "wb") as fout:
             try:
                 torch.save(obj, fout)
             except Exception as e:
-                raise NotImplementedError
+                raise e
                 cloudpickle.dump(obj, local_path)
 
         self.run.save(local_path)
