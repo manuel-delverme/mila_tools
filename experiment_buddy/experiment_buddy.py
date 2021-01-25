@@ -1,14 +1,13 @@
 import ast
 import concurrent.futures
 import datetime
-import logging
 import os
 import sys
 import time
 import tkinter.simpledialog
 import types
+import warnings
 
-import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
@@ -115,6 +114,7 @@ class WandbWrapper:
         # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
 
     def add_scalar(self, tag: str, scalar_value: float, global_step: int):
+        scalar_value = float(scalar_value)  # silently remove extra data such as torch gradients
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
@@ -158,7 +158,11 @@ class WandbWrapper:
 
 
 @timeit
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1) -> WandbWrapper:
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="") -> WandbWrapper:
+    if use_remote and not host:
+        warnings.warn("use_remote is deprecated, use host instead")
+        host = use_remote
+
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
