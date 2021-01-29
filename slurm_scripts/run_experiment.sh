@@ -4,17 +4,14 @@ function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
 }
 SCRIPT=$(realpath $0)
-log "script realpath: $SCRIPT"
+log "script real path: $SCRIPT"
 SCRIPTS_FOLDER=$(dirname $SCRIPT)
 log "scripts home: $SCRIPTS_FOLDER"
 
 source /etc/profile
-log "Refreshing modules..."
-module purge
-module load python/3.8
-module load cuda/10.1/cudnn/7.6
 
 log "cd $HOME/experiments/"
+mkdir -p $HOME/experiments/
 cd $HOME/experiments/ || exit
 
 FOLDER=$(mktemp -p . -d)
@@ -27,25 +24,25 @@ git checkout $3
 log "pwd is now $(pwd)"
 
 # # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
-# log "Setting up venv @ $FOLDER/venv..."
-# python -m pip install virtualenv-clone
-# # python -m virtualenv "venv"
+log "Setting up venv @ $HOME/venv..."
+python3 -m virtualenv $HOME/"venv"
 # python -m clonevirtualenv "$HOME/venv" "venv"
-#
+
 # # shellcheck disable=SC1090
 # source "venv/bin/activate"
 
-log "Using shared venv @ $HOME/venv"
+# log "Using shared venv @ $HOME/venv"
 # shellcheck disable=SC1090
 source $HOME/venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install virtualenv jax jaxlib cloudpickle
+log "installing torch with --no--cache-dir"
+pip3 --no-cache-dir install torch
+log "installing experiment_buddy"
+pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy@ionelia#egg=experiment_buddy
 
-python -m pip install --upgrade pip
+#python3 -m pip install -r "requirements.txt" --exists-action w
+export SLURM_JOB_ID=1234
 
-log "Downloading modules"
-sh $HOME/install_jax.sh # TODO: move this to mila_tools
-python -m pip install -r "requirements.txt" --exists-action w
-
-export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
-# TODO: the client should send the mila_tools version to avoid issues
-log "/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $2"
-/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $2
+log "HELLO python3 $2"
+byobu python3 -O -u $2
