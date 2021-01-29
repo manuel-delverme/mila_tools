@@ -294,7 +294,7 @@ def log_cmd(cmd, retr):
 @timeit
 def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header):
     git_url = git_repo.remotes[0].url
-    _ensure_scripts(hostname, extra_slurm_header)
+    # _ensure_scripts(hostname, extra_slurm_header)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header)
         hash_commit = git_sync(experiment_id, git_repo)
@@ -339,11 +339,11 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
 @timeit
 def git_sync(experiment_id, git_repo):
     active_branch = git_repo.active_branch.name
-    os.system(f"git checkout -b snapshot_{active_branch}")  # move changest to snapshot branch
+    os.system(f"git checkout -B snapshot_{active_branch}")  # move changest to snapshot branch
     os.system(f"git add .")
     os.system(f"git commit -m '{experiment_id}'")
     git_hash = git_repo.commit().hexsha
-    os.system("git push")  # send to online repo
+    os.system(f"git push {git_repo.remote()} {git_repo.active_branch.name}")  # send to online repo
     os.system(f"git checkout {active_branch}")  # return on active branch
     os.system(f"git cherry-pick {git_hash}")  # copy the change to current
     os.system(f"git reset HEAD~1")  # untrack the changes
