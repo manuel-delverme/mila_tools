@@ -333,18 +333,18 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
         if proc_num > 1:
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
-        ssh_session.run(ssh_command)
+        ssh_session.run(ssh_command, timeout=30)
 
 
 @timeit
 def git_sync(experiment_id, git_repo):
     active_branch = git_repo.active_branch.name
-    os.system(f"git checkout -B snapshot_{active_branch}")  # move changest to snapshot branch
+    os.system(f"git checkout --detach")  # move changest to snapshot branch
     os.system(f"git add .")
     os.system(f"git commit -m '{experiment_id}'")
     git_hash = git_repo.commit().hexsha
-    os.system(f"git push {git_repo.remote()} {git_repo.active_branch.name}")  # send to online repo
-    os.system(f"git checkout {active_branch}")  # return on active branch
-    os.system(f"git cherry-pick {git_hash}")  # copy the change to current
+    os.system(f"git tag snapshot/{active_branch}/{git_hash}")
+    os.system(f"git push {git_repo.remote()} {active_branch}")  # send to online repo
     os.system(f"git reset HEAD~1")  # untrack the changes
+    os.system(f"git checkout {active_branch}")
     return git_hash
