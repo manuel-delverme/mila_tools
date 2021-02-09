@@ -64,6 +64,8 @@ def _cast_param(v):
         return ast.literal_eval(v)
     except ValueError:
         return v
+    except SyntaxError:
+        return v
 
 
 def _valid_hyperparam(key, value):
