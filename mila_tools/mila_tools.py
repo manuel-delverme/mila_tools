@@ -300,7 +300,7 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
         scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header)
         hash_commit = git_sync(experiment_id, git_repo)
 
-        _, entrypoint = os.path.split(sys.argv[0])
+        entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
         if sweep_yaml:
             with open(sweep_yaml, 'r') as stream:
                 data_loaded = yaml.safe_load(stream)
@@ -317,7 +317,6 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
             ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
         else:
-            _, entrypoint = os.path.split(sys.argv[0])
             ssh_args = (git_url, entrypoint, hash_commit)
             ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
             num_repeats = 1  # this should become > 1 for parallel sweeps
