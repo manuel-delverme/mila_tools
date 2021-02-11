@@ -316,24 +316,18 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
 
             ssh_args = (git_url, sweep_id, hash_commit)
             ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
-            num_repeats = 1  # this should become > 1 for parallel sweeps
         else:
             ssh_args = (git_url, entrypoint, hash_commit)
             ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
-            num_repeats = 1  # this should become > 1 for parallel sweeps
             print("monitor your run on https://wandb.ai/")
 
     # TODO: assert -e git+git@github.com:manuel-delverme/mila_tools.git#egg=mila_tools is in requirements.txt
     scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
-    for proc_num in range(num_repeats):
-        if proc_num > 0:
-            time.sleep(1)
-            raise NotImplemented
-        if proc_num > 1:
-            priority = "long"
-            raise NotImplemented("localenv_sweep.sh does not handle this yet")
+    for proc_num in range(proc_num):
+        print("Running process ", proc_num)
+        time.sleep(1)
         ssh_session.run(ssh_command)
 
 
