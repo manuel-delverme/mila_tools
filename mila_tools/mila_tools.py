@@ -176,9 +176,9 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="
     local_run = not host
 
     try:
-        git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
+        git_repo = git.Repo()
     except git.InvalidGitRepositoryError:
-        raise ValueError(f"Could not find a git repo in {os.path.dirname(hyperparams['__file__'])}")
+        raise ValueError(f"Could not find a git repo")
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
@@ -249,7 +249,7 @@ def _open_ssh_session(hostname):
         pass
 
     try:
-        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=2)
+        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=10)
         ssh_session.run("")
     except SSHException as e:
         raise SSHException("SSH connection failed!,"
@@ -343,8 +343,9 @@ def git_sync(experiment_id, git_repo):
     os.system(f"git add .")
     os.system(f"git commit -m '{experiment_id}'")
     git_hash = git_repo.commit().hexsha
-    os.system(f"git tag snapshot/{active_branch}/{git_hash}")
-    os.system(f"git push {git_repo.remote()} {active_branch}")  # send to online repo
+    tag_name = f"snapshot/{active_branch}/{git_hash}"
+    os.system(f"git tag {tag_name}")
+    os.system(f"git push {git_repo.remote()} {tag_name}")  # send to online repo
     os.system(f"git reset HEAD~1")  # untrack the changes
     os.system(f"git checkout {active_branch}")
     return git_hash

@@ -1,4 +1,5 @@
 #! /bin/bash
+set -e
 # Module system
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
@@ -41,9 +42,12 @@ source $HOME/venv/bin/activate
 
 python -m pip install --upgrade pip
 
-log "Downloading modules"
+log "Downloading jax"
 sh $HOME/install_jax.sh # TODO: move this to mila_tools
+
+log 'python -m pip install -r "requirements.txt" --exists-action w'
 python -m pip install -r "requirements.txt" --exists-action w
+
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 # TODO: the client should send the mila_tools version to avoid issues

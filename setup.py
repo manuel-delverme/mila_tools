@@ -1,15 +1,12 @@
-from setuptools import setup, find_namespace_packages
+from setuptools import setup, find_packages
 
 install_requires = ['GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric']
 
 setup(
     name='mila_tools',
     version='0.0.1',
-    packages=find_namespace_packages(
-        where='mila_tools/',
-        include=['mila_tools.*'],
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"]
-    ),
+    packages=["mila_tools", "slurm_scripts"],
+    package_data={'': ['*.sh']},
     url='github.com/manuel-delverme/mila_tools/',
     license='',
     author='Manuel Del Verme',
