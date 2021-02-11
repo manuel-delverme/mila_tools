@@ -16,19 +16,19 @@ module load python/3.8
 module load cuda/10.1/cudnn/7.6
 
 log "cd $HOME/experiments/"
-cd $HOME/experiments/ || exit
+cd $HOME/experiments/
 
-FOLDER=$(mktemp -p . -d)
-log "FOLDER=$FOLDER"
+EXPERIMENT_FOLDER=$(mktemp -p . -d)
+log "EXPERIMENT_FOLDER=$EXPERIMENT_FOLDER"
 
-log "downloading source code from $1 to $FOLDER"
-git clone $1 $FOLDER/
-cd $FOLDER || exit
+log "downloading source code from $1 to $EXPERIMENT_FOLDER"
+git clone $1 $EXPERIMENT_FOLDER/
+cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
 # # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
-# log "Setting up venv @ $FOLDER/venv..."
+# log "Setting up venv @ $EXPERIMENT_FOLDER/venv..."
 # python -m pip install virtualenv-clone
 # # python -m virtualenv "venv"
 # python -m clonevirtualenv "$HOME/venv" "venv"
