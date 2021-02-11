@@ -1,12 +1,10 @@
 import ast
-import subprocess
-import yaml
 import concurrent.futures
 import datetime
 import os
+import subprocess
 import sys
 import time
-import tkinter.simpledialog
 import types
 import warnings
 
@@ -14,6 +12,8 @@ import fabric
 import git
 import matplotlib.pyplot as plt
 import tensorboardX
+import yaml
+
 try:
     import torch
 except ImportError:
@@ -218,6 +218,7 @@ def _ask_experiment_id(cluster, sweep):
     title = f"{title}]"
 
     try:
+        import tkinter.simpledialog  # fails on the server or colab
         root = tkinter.Tk()
         root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
