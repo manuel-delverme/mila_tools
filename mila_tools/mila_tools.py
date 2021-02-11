@@ -333,7 +333,7 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
         if proc_num > 1:
             priority = "long"
             raise NotImplemented("localenv_sweep.sh does not handle this yet")
-        ssh_session.run(ssh_command, timeout=30)
+        ssh_session.run(ssh_command)
 
 
 @timeit
