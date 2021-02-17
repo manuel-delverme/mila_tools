@@ -308,8 +308,11 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
             if data_loaded["program"] != entrypoint:
                 raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
 
-            wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
-            # sweep_id = wandb_stdout.split("/")[-1].strip()
+            try:
+                wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
+            except subprocess.CalledProcessError as e:
+                print(e.output.decode("utf-8"))
+                raise e
             row, = [row for row in wandb_stdout.split("\n") if "Run sweep agent with:" in row]
             print([row for row in wandb_stdout.split("\n") if "View" in row][0])
             sweep_id = row.split()[-1].strip()
