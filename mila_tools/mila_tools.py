@@ -131,17 +131,22 @@ class WandbWrapper:
         self.run.log(scalar_dict, step=global_step, commit=False)
 
     def add_figure(self, tag, figure, global_step=None, close=True):
-        self.run.log({tag: figure}, step=global_step, commit=False)
+        self.run.log({tag: figure}, step=global_step, commit=global_step is None)
         if close:
             plt.close(figure)
 
         if self.tensorboard:
             self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
 
-    def add_histogram(self, tag, values, global_step=None):
+    def add_histogram(self, tag, values, global_step):
         wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
         if self.tensorboard:
             self.tensorboard.add_histogram(tag, values, global_step=None)
+
+    def plot(self, tag, values, global_step):
+        wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
+        # if self.tensorboard:
+        #     raise NotImplementedError
 
     ###########################################################################
     # THE FOLLOWING METHODS ARE NOT IMPLEMENTED IN TENSORBOARD (can they be?) #
