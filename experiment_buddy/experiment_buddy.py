@@ -113,8 +113,6 @@ class WandbWrapper:
         for k, v in hyperparams.items():
             register_param(k, v)
 
-        # _commit_and_sendjob(experiment_id, sweep_yaml, git_repo, project_name, proc_num)
-
     def add_scalar(self, tag: str, scalar_value: float, global_step: int):
         scalar_value = float(scalar_value)  # silently remove extra data such as torch gradients
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
