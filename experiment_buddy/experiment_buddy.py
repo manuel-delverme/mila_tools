@@ -8,6 +8,7 @@ import tkinter.simpledialog
 import types
 import warnings
 
+import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
@@ -146,7 +147,7 @@ class WandbWrapper:
         local_path = os.path.join(self.objects_path, f"{tag}-{global_step}.pt")
         with open(local_path, "wb") as fout:
             try:
-                torch.save(obj, fout)
+                torch.save(obj, fout, pickle_module=cloudpickle)
             except Exception as e:
                 raise e
 
