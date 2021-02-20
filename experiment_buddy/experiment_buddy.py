@@ -152,7 +152,7 @@ class WandbWrapper:
             except Exception as e:
                 raise e
 
-        self.run.save(local_path)
+        self.run.save(local_path, base_path=self.objects_path)
         return local_path
 
     def watch(self, *args, **kwargs):
