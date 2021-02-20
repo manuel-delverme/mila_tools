@@ -43,6 +43,9 @@ def register(config_params):
     global hyperparams
     # overwrite CLI parameters
     # fails on nested config object
+    if hyperparams is not None:
+        raise RuntimeError("refusing to overwrite registered parameters")
+
     for k in config_params.keys():
         if k.startswith(wandb_escape):
             raise NameError(f"{wandb_escape} is a reserved prefix")
