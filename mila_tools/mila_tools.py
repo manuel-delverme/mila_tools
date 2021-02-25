@@ -212,7 +212,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
     else:
-        if experiment_id.startswith("!"):
+        if experiment_id.endswith("!"):
             extra_slurm_headers += "#SBATCH --partition=main"
         _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
         sys.exit()
