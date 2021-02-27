@@ -83,13 +83,13 @@ def _valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    def __init__(self, experiment_id, project_name, local_tensorboard=None):
+    def __init__(self, experiment_id, project_name, entity=None, local_tensorboard=None):
         # proj name is git root folder name
         print(f"wandb.init(project={project_name}, name={experiment_id})")
 
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
-        self.run = wandb.init(project=project_name, name=experiment_id)
+        self.run = wandb.init(project=project_name, name=experiment_id, entity=entity)
 
         self.tensorboard = local_tensorboard
         self.objects_path = os.path.join("runs/objects/", self.run.name)
@@ -162,7 +162,7 @@ class WandbWrapper:
 
 
 @timeit
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="") -> WandbWrapper:
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="", entity=None) -> WandbWrapper:
     if use_remote and not host:
         warnings.warn("use_remote is deprecated, use host instead")
         host = use_remote
@@ -185,14 +185,14 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         jid = os.environ["SLURM_JOB_ID"]
-        return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name)
+        return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name, entity=entity)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
-                            local_tensorboard=_setup_tb(logdir=tb_dir))
+                            local_tensorboard=_setup_tb(logdir=tb_dir), entity=entity)
 
     experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
