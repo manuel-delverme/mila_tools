@@ -7,7 +7,7 @@ install_requires = [
 setup(
     name='experiment_buddy',
     version='0.0.1',
-    packages=["mila_tools", "slurm_scripts"],
+    packages=["experiment_buddy", "slurm_scripts"],
     package_data={'': ['*.sh']},
     url='github.com/ministry-of-silly-code/experiment_buddy/',
     license='',
