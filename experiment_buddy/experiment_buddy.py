@@ -2,47 +2,37 @@ import ast
 import concurrent.futures
 import datetime
 import os
+import subprocess
 import sys
 import time
-import tkinter.simpledialog
 import types
-import warnings
 
-import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
 import tensorboardX
-import torch
 import wandb
 import wandb.cli
+import yaml
 from paramiko.ssh_exception import SSHException
+
+try:
+    import torch
+except ImportError:
+    TORCH_ENABLED = False
+else:
+    TORCH_ENABLED = True
 
 wandb_escape = "^"
 hyperparams = None
-tb = None
+tb = tensorboard = None
 SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
-PROFILE = False
-
-
-def timeit(method):
-    if not PROFILE:
-        return method
-
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-        print(f'{method.__name__!r}  {(te - ts):2.2f} s')
-        return result
-
-    return timed
+ARTIFACTS_PATH = "runs/"
 
 
 def register(config_params):
     global hyperparams
-    # overwrite CLI parameters
-    # fails on nested config object
+    # TODO: fails on nested config object
     if hyperparams is not None:
         raise RuntimeError("refusing to overwrite registered parameters")
 
@@ -92,7 +82,7 @@ class WandbWrapper:
         self.run = wandb.init(project=project_name, name=experiment_id, entity=entity)
 
         self.tensorboard = local_tensorboard
-        self.objects_path = os.path.join("runs/objects/", self.run.name)
+        self.objects_path = os.path.join(ARTIFACTS_PATH, "objects/", self.run.name)
         os.makedirs(self.objects_path, exist_ok=True)
 
         def register_param(name, value, prefix=""):
@@ -123,30 +113,26 @@ class WandbWrapper:
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
-    def add_scalar_dict(self, scalar_dict, global_step):
-        raise NotImplementedError
-        # This is not a tensorboard funciton
-        self.run.log(scalar_dict, step=global_step, commit=False)
-
-    def add_figure(self, tag, figure, global_step=None, close=True):
-        self.run.log({tag: figure}, step=global_step, commit=False)
+    def add_figure(self, tag, figure, global_step, close=True):
+        self.run.log({tag: figure}, global_step)
         if close:
             plt.close(figure)
 
         if self.tensorboard:
             self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
 
-    def add_histogram(self, tag, values, global_step=None):
+    def add_histogram(self, tag, values, global_step):
         wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
         if self.tensorboard:
             self.tensorboard.add_histogram(tag, values, global_step=None)
 
-    ###########################################################################
-    # THE FOLLOWING METHODS ARE NOT IMPLEMENTED IN TENSORBOARD (can they be?) #
-    ###########################################################################
+    def plot(self, tag, values, global_step):
+        wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
 
     def add_object(self, tag, obj, global_step):
-        # This is not a tensorboard function
+        if not TORCH_ENABLED:
+            raise NotImplementedError
+
         local_path = os.path.join(self.objects_path, f"{tag}-{global_step}.pt")
         with open(local_path, "wb") as fout:
             try:
@@ -161,20 +147,15 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-@timeit
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="", entity=None) -> WandbWrapper:
-    if use_remote and not host:
-        warnings.warn("use_remote is deprecated, use host instead")
-        host = use_remote
-
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None, extra_slurm_headers="") -> WandbWrapper:
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
 
     try:
-        git_repo = git.Repo(os.path.dirname(hyperparams["__file__"]))
+        git_repo = git.Repo()
     except git.InvalidGitRepositoryError:
-        raise ValueError(f"Could not find a git repo in {os.path.dirname(hyperparams['__file__'])}")
+        raise ValueError(f"Could not find a git repo")
 
     project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
 
@@ -184,24 +165,27 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="
     if is_running_remotely:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
-        jid = os.environ["SLURM_JOB_ID"]
+        jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        jid += os.environ.get("SLURM_JOB_ID", "")
+        # TODO: turn into a big switch based on scheduler
         return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name, entity=entity)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
     if debug:
         experiment_id = "DEBUG_RUN"
-        tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
+        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
                             local_tensorboard=_setup_tb(logdir=tb_dir), entity=entity)
 
     experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
     if local_run:
-        tb_dir = os.path.join(git_repo.working_dir, "runs/tensorboard/", experiment_id, dtm)
+        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
     else:
-        # raise NotImplemented
-        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num)
+        if experiment_id.endswith("!"):
+            extra_slurm_headers += "#SBATCH --partition=main"
+        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
         sys.exit()
 
 
@@ -212,6 +196,7 @@ def _ask_experiment_id(cluster, sweep):
     title = f"{title}]"
 
     try:
+        import tkinter.simpledialog  # fails on the server or colab
         root = tkinter.Tk()
         root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
@@ -243,7 +228,7 @@ def _open_ssh_session(hostname):
         pass
 
     try:
-        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=2)
+        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=10)
         ssh_session.run("")
     except SSHException as e:
         raise SSHException("SSH connection failed!,"
@@ -285,45 +270,55 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-@timeit
-def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num):
+def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header):
     git_url = git_repo.remotes[0].url
-    _ensure_scripts(hostname, "")
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        scripts_folder = executor.submit(_ensure_scripts, hostname, "")
+        scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header)
         hash_commit = git_sync(experiment_id, git_repo)
 
-        _, entrypoint = os.path.split(sys.argv[0])
+        entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
         if sweep_yaml:
-            raise NotImplementedError
+            with open(sweep_yaml, 'r') as stream:
+                data_loaded = yaml.safe_load(stream)
+
+            if data_loaded["program"] != entrypoint:
+                raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
+
+            try:
+                wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
+            except subprocess.CalledProcessError as e:
+                print(e.output.decode("utf-8"))
+                raise e
+            row, = [row for row in wandb_stdout.split("\n") if "Run sweep agent with:" in row]
+            print([row for row in wandb_stdout.split("\n") if "View" in row][0])
+            sweep_id = row.split()[-1].strip()
+
+            ssh_args = (git_url, sweep_id, hash_commit)
+            ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
         else:
-            _, entrypoint = os.path.split(sys.argv[0])
             ssh_args = (git_url, entrypoint, hash_commit)
-            ssh_command = "bash -l {0}/run_experiment.sh {1} {2}"  # {3}"
-            num_repeats = 1  # this should become > 1 for parallel sweeps
+            ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
+            print("monitor your run on https://wandb.ai/")
 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
-    scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
+    scripts_folder, ssh_session = scripts_folder.result()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
-    for proc_num in range(num_repeats):
-        if proc_num > 0:
-            time.sleep(1)
-            raise NotImplemented
-        if proc_num > 1:
-            priority = "long"
-            raise NotImplemented("localenv_sweep.sh does not handle this yet")
+    print(ssh_command)
+    for proc_num in range(proc_num):
+        print("Running process ", proc_num)
+        time.sleep(1)
         ssh_session.run(ssh_command)
 
 
-@timeit
 def git_sync(experiment_id, git_repo):
     active_branch = git_repo.active_branch.name
-    os.system(f"git checkout -b snapshot_{active_branch}")  # move changest to snapshot branch
+    os.system(f"git checkout --detach")  # move changest to snapshot branch
     os.system(f"git add .")
     os.system(f"git commit -m '{experiment_id}'")
     git_hash = git_repo.commit().hexsha
-    os.system("git push")  # send to online repo
-    os.system(f"git checkout {active_branch}")  # return on active branch
-    os.system(f"git cherry-pick {git_hash}")  # copy the change to current
+    tag_name = f"snapshot/{active_branch}/{git_hash}"
+    os.system(f"git tag {tag_name}")
+    os.system(f"git push {git_repo.remote()} {tag_name}")  # send to online repo
     os.system(f"git reset HEAD~1")  # untrack the changes
+    os.system(f"git checkout {active_branch}")
     return git_hash
