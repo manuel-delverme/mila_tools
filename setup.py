@@ -1,4 +1,4 @@
-from setuptools import setup, find_namespace_packages
+from setuptools import setup
 
 install_requires = [
     'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle'
