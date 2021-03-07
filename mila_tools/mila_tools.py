@@ -6,50 +6,36 @@ import subprocess
 import sys
 import time
 import types
-import warnings
 
 import fabric
 import git
 import matplotlib.pyplot as plt
 import tensorboardX
+import wandb
+import wandb.cli
 import yaml
+from paramiko.ssh_exception import SSHException
 
 try:
     import torch
 except ImportError:
-    USE_TORCH = False
+    TORCH_ENABLED = False
 else:
-    USE_TORCH = True
-import wandb
-import wandb.cli
-from paramiko.ssh_exception import SSHException
+    TORCH_ENABLED = True
 
 wandb_escape = "^"
 hyperparams = None
-tb = None
+tb = tensorboard = None
 SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
 ARTIFACTS_PATH = "runs/"
-PROFILE = False
-
-
-def timeit(method):
-    if not PROFILE:
-        return method
-
-    def timed(*args, **kw):
-        ts = time.time()
-        result = method(*args, **kw)
-        te = time.time()
-        print(f'{method.__name__!r}  {(te - ts):2.2f} s')
-        return result
-
-    return timed
 
 
 def register(config_params):
     global hyperparams
-    # overwrite CLI parameters
-    # fails on nested config object
+    # TODO: fails on nested config object
+    if hyperparams is not None:
+        raise RuntimeError("refusing to overwrite registered parameters")
+
     for k in config_params.keys():
         if k.startswith(wandb_escape):
             raise NameError(f"{wandb_escape} is a reserved prefix")
@@ -72,6 +58,8 @@ def _cast_param(v):
         return ast.literal_eval(v)
     except ValueError:
         return v
+    except SyntaxError:
+        return v
 
 
 def _valid_hyperparam(key, value):
@@ -85,13 +73,13 @@ def _valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    def __init__(self, experiment_id, project_name, local_tensorboard=None):
+    def __init__(self, experiment_id, project_name, entity=None, local_tensorboard=None):
         # proj name is git root folder name
         print(f"wandb.init(project={project_name}, name={experiment_id})")
 
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
-        self.run = wandb.init(project=project_name, name=experiment_id)
+        self.run = wandb.init(project=project_name, name=experiment_id, entity=entity)
 
         self.tensorboard = local_tensorboard
         self.objects_path = os.path.join(ARTIFACTS_PATH, "objects/", self.run.name)
@@ -125,13 +113,8 @@ class WandbWrapper:
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
-    def add_scalar_dict(self, scalar_dict, global_step):
-        raise NotImplementedError
-        # This is not a tensorboard funciton
-        self.run.log(scalar_dict, step=global_step, commit=False)
-
-    def add_figure(self, tag, figure, global_step=None, close=True):
-        self.run.log({tag: figure}, step=global_step, commit=global_step is None)
+    def add_figure(self, tag, figure, global_step, close=True):
+        self.run.log({tag: figure}, global_step)
         if close:
             plt.close(figure)
 
@@ -145,37 +128,26 @@ class WandbWrapper:
 
     def plot(self, tag, values, global_step):
         wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
-        # if self.tensorboard:
-        #     raise NotImplementedError
-
-    ###########################################################################
-    # THE FOLLOWING METHODS ARE NOT IMPLEMENTED IN TENSORBOARD (can they be?) #
-    ###########################################################################
 
     def add_object(self, tag, obj, global_step):
-        if not USE_TORCH:
+        if not TORCH_ENABLED:
             raise NotImplementedError
-        # This is not a tensorboard function
+
         local_path = os.path.join(self.objects_path, f"{tag}-{global_step}.pt")
         with open(local_path, "wb") as fout:
             try:
-                torch.save(obj, fout)
+                torch.save(obj, fout, pickle_module=cloudpickle)
             except Exception as e:
                 raise e
 
-        self.run.save(local_path)
+        self.run.save(local_path, base_path=self.objects_path)
         return local_path
 
     def watch(self, *args, **kwargs):
         self.run.watch(*args, **kwargs)
 
 
-@timeit
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="", extra_slurm_headers="") -> WandbWrapper:
-    if use_remote and not host:
-        warnings.warn("use_remote is deprecated, use host instead")
-        host = use_remote
-
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None, extra_slurm_headers="") -> WandbWrapper:
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
@@ -193,18 +165,17 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, use_remote="
     if is_running_remotely:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
-        if sweep_yaml:
-            jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-        else:
-            jid = os.environ["SLURM_JOB_ID"]
-        return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name)
+        jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+        jid += os.environ.get("SLURM_JOB_ID", "")
+        # TODO: turn into a big switch based on scheduler
+        return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name, entity=entity)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
-                            local_tensorboard=_setup_tb(logdir=tb_dir))
+                            local_tensorboard=_setup_tb(logdir=tb_dir), entity=entity)
 
     experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
@@ -299,10 +270,8 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-@timeit
 def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header):
     git_url = git_repo.remotes[0].url
-    # _ensure_scripts(hostname, extra_slurm_header)
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header)
         hash_commit = git_sync(experiment_id, git_repo)
@@ -332,7 +301,7 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
             print("monitor your run on https://wandb.ai/")
 
     # TODO: assert -e git+git@github.com:manuel-delverme/mila_tools.git#egg=mila_tools is in requirements.txt
-    scripts_folder, ssh_session = timeit(lambda: scripts_folder.result())()
+    scripts_folder, ssh_session = scripts_folder.result()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
     for proc_num in range(proc_num):
@@ -341,7 +310,6 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
         ssh_session.run(ssh_command)
 
 
-@timeit
 def git_sync(experiment_id, git_repo):
     active_branch = git_repo.active_branch.name
     os.system(f"git checkout --detach")  # move changest to snapshot branch
