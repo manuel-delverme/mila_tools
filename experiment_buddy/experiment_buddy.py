@@ -7,6 +7,7 @@ import sys
 import time
 import types
 
+import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
