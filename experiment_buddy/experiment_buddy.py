@@ -308,7 +308,7 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
             ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
         else:
             ssh_args = (git_url, entrypoint, hash_commit)
-            ssh_command = "bash -l {0}/run_experiment.sh {1} {2} {3}"
+            ssh_command = "bash -l {0}run_experiment.sh {1} {2} {3}"
             print("monitor your run on https://wandb.ai/")
 
     # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
@@ -323,13 +323,19 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
 
 def git_sync(experiment_id, git_repo):
     active_branch = git_repo.active_branch.name
-    os.system(f"git checkout --detach")  # move changest to snapshot branch
-    os.system(f"git add .")
-    os.system(f"git commit -m '{experiment_id}'")
-    git_hash = git_repo.commit().hexsha
-    tag_name = f"snapshot/{active_branch}/{git_hash}"
-    os.system(f"git tag {tag_name}")
-    os.system(f"git push {git_repo.remote()} {tag_name}")  # send to online repo
-    os.system(f"git reset HEAD~1")  # untrack the changes
-    os.system(f"git checkout {active_branch}")
+    subprocess.check_output(f"git checkout --detach", shell=True)  # move changest to snapshot branch
+    subprocess.check_output(f"git add .", shell=True)
+
+    try:
+        subprocess.check_output(f"git commit -m '{experiment_id}'", shell=True)
+    except subprocess.CalledProcessError as e:
+        git_hash = git_repo.commit().hexsha
+    else:
+        git_hash = git_repo.commit().hexsha
+        tag_name = f"snapshot/{active_branch}/{git_hash}"
+        subprocess.check_output(f"git tag {tag_name}", shell=True)
+        subprocess.check_output(f"git push {git_repo.remote()} {tag_name}", shell=True)  # send to online repo
+
+    subprocess.check_output(f"git reset HEAD~1", shell=True)  # untrack the changes
+    subprocess.check_output(f"git checkout {active_branch}", shell=True)
     return git_hash

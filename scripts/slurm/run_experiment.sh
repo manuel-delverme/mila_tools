@@ -28,11 +28,10 @@ cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
-
-if ![[ source $HOME/venv/bin/activate ]]
-then
+if ! source $HOME/venv/bin/activate; then
   log "Setting up venv @ $HOME/venv..."
   python3 -m virtualenv $HOME/"venv"
+  source $HOME/venv/bin/activate
 fi
 
 log "Using shared venv @ $HOME/venv"

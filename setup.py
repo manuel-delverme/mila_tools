@@ -7,8 +7,8 @@ install_requires = [
 setup(
     name='experiment_buddy',
     version='0.0.1',
-    packages=["experiment_buddy", "slurm_scripts"],
-    package_data={'': ['*.sh']},
+    packages=["experiment_buddy", "scripts"],
+    package_data={'scripts': ['*/*.sh']},
     url='github.com/ministry-of-silly-code/experiment_buddy/',
     license='',
     author='Manuel Del Verme, Ionelia Buzatu',
