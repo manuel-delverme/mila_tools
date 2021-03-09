@@ -47,4 +47,4 @@ export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/commo
 
 # TODO: the client should send the mila_tools version to avoid issues
 log "/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $2"
-/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $2
+/opt/slurm/bin/sbatch --comment $(git log --format=%B -n 1) $SCRIPTS_FOLDER/srun_python.sh $2
