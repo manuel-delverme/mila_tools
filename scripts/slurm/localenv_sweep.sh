@@ -36,7 +36,6 @@ source "$SLURM_TMPDIR/venv/bin/activate"
 python3 -m pip install --upgrade pip
 
 log "Downloading modules"
-sh $HOME/install_jax.sh # TODO: move this to experiment_buddy
 python3 -m pip install -r "requirements.txt" --exists-action w
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
