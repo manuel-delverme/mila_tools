@@ -4,6 +4,7 @@ import datetime
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import types
 
@@ -27,7 +28,7 @@ else:
 wandb_escape = "^"
 hyperparams = None
 tb = tensorboard = None
-SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../slurm_scripts/")
+SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
 ARTIFACTS_PATH = "runs/"
 
 
@@ -185,7 +186,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
     else:
         if experiment_id.endswith("!"):
-            extra_slurm_headers += "#SBATCH --partition=main"
+            extra_slurm_headers += "\n#SBATCH --partition=main"
         _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
         sys.exit()
 
@@ -242,25 +243,34 @@ def _open_ssh_session(hostname):
 def _ensure_scripts(hostname, extra_headers):
     ssh_session = _open_ssh_session(hostname)
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
-    tmp_folder = retr.stdout.strip()
-    for file_path in os.listdir(SCRIPTS_PATH):
-        script_path = SCRIPTS_PATH + file_path
+    remote_tmp_folder = retr.stdout.strip() + "/"
+
+    has_slurm = ssh_session.run("/opt/slurm/bin/scontrol ping")
+    if has_slurm.ok:
+        scripts_dir = os.path.join(SCRIPTS_PATH, "slurm")
+    else:
+        scripts_dir = os.path.join(SCRIPTS_PATH, "general")
+
+    for file_path in os.listdir(scripts_dir):
+        script_path = os.path.join(scripts_dir, file_path)
         if extra_headers and file_path in ("localenv_sweep.sh", "srun_python.sh"):
-            with open(SCRIPTS_PATH + file_path) as fin:
+            with open(script_path) as fin:
                 rows = fin.readlines()
 
-            script_path = "/tmp/" + file_path
-            with open(script_path, "w") as fout:
+            with tempfile.NamedTemporaryFile("w") as tmp_script:
                 for flag_idx in range(1, len(rows)):
                     old = rows[flag_idx - 1].strip()
                     new = rows[flag_idx].strip()
                     if old[:7] in ("#SBATCH", "") and new[:7] not in ("#SBATCH", ""):
                         rows.insert(flag_idx, "\n" + extra_headers + "\n")
                         break
-                fout.write("".join(rows))
+                tmp_script.write("".join(rows))
+                tmp_script.flush()
+                ssh_session.put(tmp_script, remote_tmp_folder)
+        else:
+            ssh_session.put(script_path, remote_tmp_folder)
 
-        ssh_session.put(script_path, tmp_folder + "/")
-    return tmp_folder, ssh_session
+    return remote_tmp_folder, ssh_session
 
 
 def log_cmd(cmd, retr):
