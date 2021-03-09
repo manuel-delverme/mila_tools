@@ -335,7 +335,7 @@ def git_sync(experiment_id, git_repo):
         tag_name = f"snapshot/{active_branch}/{git_hash}"
         subprocess.check_output(f"git tag {tag_name}", shell=True)
         subprocess.check_output(f"git push {git_repo.remote()} {tag_name}", shell=True)  # send to online repo
+        subprocess.check_output(f"git reset HEAD~1", shell=True)  # untrack the changes
 
-    subprocess.check_output(f"git reset HEAD~1", shell=True)  # untrack the changes
     subprocess.check_output(f"git checkout {active_branch}", shell=True)
     return git_hash
