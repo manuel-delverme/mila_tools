@@ -9,6 +9,7 @@
 #SBATCH --partition=long
 #SBATCH --get-user-env=L
 
+
 # Module system
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
@@ -17,8 +18,10 @@ function log() {
 source /etc/profile
 log "Refreshing modules..."
 module purge
-module load python/3.8
-module load cuda/10.1/cudnn/7.6
+# module load python/3.8
+# module load cuda/10.1/cudnn/7.6
+module load python/3.7
+module load python/3.7/cuda/11.0/cudnn/8.0/pytorch/1.7.0
 
 FOLDER=$SLURM_TMPDIR/src/
 
@@ -30,7 +33,8 @@ log "pwd is now $(pwd)"
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
 log "Setting up venv @ $SLURM_TMPDIR/venv..."
-python3 -m virtualenv "$SLURM_TMPDIR/venv"
+
+python3 -m virtualenv --system-site-packages "$SLURM_TMPDIR/venv"
 # shellcheck disable=SC1090
 source "$SLURM_TMPDIR/venv/bin/activate"
 python3 -m pip install --upgrade pip
