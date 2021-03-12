@@ -12,6 +12,7 @@ import fabric
 import git
 import matplotlib.pyplot as plt
 import tensorboardX
+import tqdm
 import wandb
 import wandb.cli
 import yaml
@@ -42,6 +43,8 @@ def register(config_params):
             raise NameError(f"{wandb_escape} is a reserved prefix")
 
     for arg in sys.argv[1:]:
+        if arg.endswith(".py"):
+            continue
         assert arg[:2] == "--"
         k, v = arg[2:].split("=")
         k = k.lstrip(wandb_escape)
@@ -315,8 +318,7 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
     scripts_folder, ssh_session = scripts_folder.result()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
-    for proc_num in range(proc_num):
-        print(f"{proc_num}: {ssh_command}")
+    for _ in tqdm.trange(proc_num):
         time.sleep(1)
         ssh_session.run(ssh_command)
 
