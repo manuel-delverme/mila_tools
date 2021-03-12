@@ -323,20 +323,21 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
 
 def git_sync(experiment_id, git_repo):
     active_branch = git_repo.active_branch.name
-    subprocess.check_output(f"git checkout --detach", shell=True)  # move changest to snapshot branch
-    subprocess.check_output(f"git add .", shell=True)
-
     try:
-        subprocess.check_output(f"git commit -m '{experiment_id}'", shell=True)
-    except subprocess.CalledProcessError as e:
-        git_hash = git_repo.commit().hexsha
-        subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)  # Ensure the code is remote
-    else:
-        git_hash = git_repo.commit().hexsha
-        tag_name = f"snapshot/{active_branch}/{git_hash}"
-        subprocess.check_output(f"git tag {tag_name}", shell=True)
-        subprocess.check_output(f"git push {git_repo.remote()} {tag_name}", shell=True)  # send to online repo
-        subprocess.check_output(f"git reset HEAD~1", shell=True)  # untrack the changes
+        subprocess.check_output(f"git checkout --detach", shell=True)  # move changest to snapshot branch
+        subprocess.check_output(f"git add .", shell=True)
 
-    subprocess.check_output(f"git checkout {active_branch}", shell=True)
+        try:
+            subprocess.check_output(f"git commit -m '{experiment_id}'", shell=True)
+        except subprocess.CalledProcessError as e:
+            git_hash = git_repo.commit().hexsha
+            subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)  # Ensure the code is remote
+        else:
+            git_hash = git_repo.commit().hexsha
+            tag_name = f"snapshot/{active_branch}/{git_hash}"
+            subprocess.check_output(f"git tag {tag_name}", shell=True)
+            subprocess.check_output(f"git push {git_repo.remote()} {tag_name}", shell=True)  # send to online repo
+            subprocess.check_output(f"git reset HEAD~1", shell=True)  # untrack the changes
+    finally:
+        subprocess.check_output(f"git checkout {active_branch}", shell=True)
     return git_hash
