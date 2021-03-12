@@ -316,7 +316,7 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
     for proc_num in range(proc_num):
-        print("Running process ", proc_num)
+        print(f"{proc_num}: {ssh_command}")
         time.sleep(1)
         ssh_session.run(ssh_command)
 

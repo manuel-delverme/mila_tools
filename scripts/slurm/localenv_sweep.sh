@@ -8,7 +8,6 @@
 #SBATCH --gres=gpu:1
 #SBATCH --partition=long
 #SBATCH --get-user-env=L
-#SBATCH -x cn_c014
 
 # Module system
 function log() {
