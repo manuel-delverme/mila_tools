@@ -4,7 +4,6 @@ import datetime
 import os
 import subprocess
 import sys
-import tempfile
 import time
 import types
 
@@ -240,7 +239,7 @@ def _open_ssh_session(hostname):
     return ssh_session
 
 
-def _ensure_scripts(hostname, extra_headers):
+def _ensure_scripts(hostname, extra_slurm_header):
     ssh_session = _open_ssh_session(hostname)
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     remote_tmp_folder = retr.stdout.strip() + "/"
@@ -253,23 +252,21 @@ def _ensure_scripts(hostname, extra_headers):
 
     for file_path in os.listdir(scripts_dir):
         script_path = os.path.join(scripts_dir, file_path)
-        if extra_headers and file_path in ("localenv_sweep.sh", "srun_python.sh"):
+        if extra_slurm_header and file_path in ("localenv_sweep.sh", "srun_python.sh"):
             with open(script_path) as fin:
                 rows = fin.readlines()
 
-            with tempfile.NamedTemporaryFile("w") as tmp_script:
+            script_path = "/tmp/" + file_path
+            with open(script_path, "w") as fout:
                 for flag_idx in range(1, len(rows)):
                     old = rows[flag_idx - 1].strip()
                     new = rows[flag_idx].strip()
                     if old[:7] in ("#SBATCH", "") and new[:7] not in ("#SBATCH", ""):
-                        rows.insert(flag_idx, "\n" + extra_headers + "\n")
+                        rows.insert(flag_idx, "\n" + extra_slurm_header + "\n")
                         break
-                tmp_script.write("".join(rows))
-                tmp_script.flush()
-                ssh_session.put(tmp_script, remote_tmp_folder)
-        else:
-            ssh_session.put(script_path, remote_tmp_folder)
+                fout.write("".join(rows))
 
+        ssh_session.put(script_path, remote_tmp_folder)
     return remote_tmp_folder, ssh_session
 
 
