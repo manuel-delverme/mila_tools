@@ -157,7 +157,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
     local_run = not host
 
     try:
-        git_repo = git.Repo()
+        git_repo = git.Repo(search_parent_directories=True)
     except git.InvalidGitRepositoryError:
         raise ValueError(f"Could not find a git repo")
 
