@@ -299,7 +299,8 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
                 raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
 
             try:
-                wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml], stderr=subprocess.STDOUT).decode("utf-8")
+                wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml],
+                                                       stderr=subprocess.STDOUT).decode("utf-8")
             except subprocess.CalledProcessError as e:
                 print(e.output.decode("utf-8"))
                 raise e
