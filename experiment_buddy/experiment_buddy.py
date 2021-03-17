@@ -126,9 +126,10 @@ class WandbWrapper:
             self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
 
     def add_histogram(self, tag, values, global_step):
-        wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
-        if self.tensorboard:
-            self.tensorboard.add_histogram(tag, values, global_step=None)
+        if len(values) == 2:
+            wandb.log({tag: wandb.Histogram(np_histogram=values)}, step=global_step, commit=False)
+        else:
+            wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
 
     def plot(self, tag, values, global_step):
         wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
