@@ -39,7 +39,8 @@ source "$SLURM_TMPDIR/venv/bin/activate"
 python3 -m pip install --upgrade pip
 
 log "Downloading modules"
-python3 -m pip install -r "requirements.txt" --exists-action w
+sed -i '/torch$/d' requirements.txt # Removed torch to avoid conflicts
+python3 -m pip install -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 # TODO: the client should send the experiment_buddy version to avoid issues
