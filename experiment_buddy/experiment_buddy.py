@@ -77,13 +77,14 @@ def _valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    def __init__(self, experiment_id, project_name, entity=None, local_tensorboard=None):
+    def __init__(self, experiment_id, project_name, debug, entity=None, local_tensorboard=None):
         # proj name is git root folder name
         print(f"wandb.init(project={project_name}, name={experiment_id})")
 
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
-        self.run = wandb.init(project=project_name, name=experiment_id, entity=entity)
+        mode = "offline" if debug else "online"
+        self.run = wandb.init(project=project_name, name=experiment_id, entity=entity, mode=mode)
 
         self.tensorboard = local_tensorboard
         self.objects_path = os.path.join(ARTIFACTS_PATH, "objects/", self.run.name)
@@ -180,7 +181,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
-                            local_tensorboard=_setup_tb(logdir=tb_dir), entity=entity)
+                            local_tensorboard=_setup_tb(logdir=tb_dir), entity=entity, debug=debug)
 
     experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
