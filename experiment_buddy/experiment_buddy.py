@@ -168,26 +168,27 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
     if local_run and sweep_yaml:
         raise NotImplemented("Local sweeps are not supported")
 
+    wandb_kwargs = dict(project_name=project_name, entity=entity, debug=debug)
+
     if is_running_remotely:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         jid += os.environ.get("SLURM_JOB_ID", "")
         # TODO: turn into a big switch based on scheduler
-        return WandbWrapper(f"{experiment_id}_{jid}", project_name=project_name, entity=entity)
+        return WandbWrapper(f"{experiment_id}_{jid}", **wandb_kwargs)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name,
-                            local_tensorboard=_setup_tb(logdir=tb_dir), entity=entity, debug=debug)
+        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **wandb_kwargs)
 
     experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", project_name=project_name, local_tensorboard=_setup_tb(logdir=tb_dir))
+        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **wandb_kwargs)
     else:
         if experiment_id.endswith("!!"):
             extra_slurm_headers += "\n#SBATCH --partition=unkillable"
