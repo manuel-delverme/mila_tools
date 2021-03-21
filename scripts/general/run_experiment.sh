@@ -27,7 +27,7 @@ log "pwd is now $(pwd)"
 
 if ! source $HOME/venv/bin/activate; then
   log "Setting up venv @ $HOME/venv..."
-  python3 -m virtualenv $HOME/"venv"
+  python3 -m venv $HOME/"venv"
   source $HOME/venv/bin/activate
 fi
 
