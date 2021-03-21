@@ -1,1 +1,1 @@
-from experiment_buddy import *
+from .experiment_buddy import *
