@@ -327,7 +327,6 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
             ssh_command = "bash -l {0}run_experiment.sh {1} {2} {3}"
             print("monitor your run on https://wandb.ai/")
 
-    # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = scripts_folder.result()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
