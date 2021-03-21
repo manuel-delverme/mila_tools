@@ -18,6 +18,7 @@ import wandb
 import wandb.cli
 import yaml
 from paramiko.ssh_exception import SSHException
+from utils import check_if_has_slurm
 
 try:
     import torch
@@ -261,7 +262,7 @@ def _ensure_scripts(hostname, extra_slurm_header):
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     remote_tmp_folder = retr.stdout.strip() + "/"
 
-    has_slurm = ssh_session.run("/opt/slurm/bin/scontrol ping")
+    has_slurm = check_if_has_slurm(ssh_session)
     if has_slurm.ok:
         scripts_dir = os.path.join(SCRIPTS_PATH, "slurm")
     else:
