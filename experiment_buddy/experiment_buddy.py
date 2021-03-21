@@ -45,7 +45,9 @@ def register(config_params):
     for arg in sys.argv[1:]:
         if arg.endswith(".py"):
             continue
-        assert arg[:2] == "--", arg
+        if not arg.startswith("--"):
+            continue
+
         k, v = arg[2:].split("=")
         k = k.lstrip(wandb_escape)
         v = _cast_param(v)
