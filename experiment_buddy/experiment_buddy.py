@@ -18,7 +18,7 @@ import wandb
 import wandb.cli
 import yaml
 from paramiko.ssh_exception import SSHException
-from utils import check_if_has_slurm
+import check_if_has_slurm
 
 try:
     import torch
