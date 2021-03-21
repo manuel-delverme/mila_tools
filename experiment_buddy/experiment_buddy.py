@@ -1,7 +1,6 @@
 import ast
 import concurrent.futures
 import datetime
-import logging
 import os
 import subprocess
 import sys
@@ -83,8 +82,6 @@ class WandbWrapper:
         # proj name is git root folder name
         print(f"wandb.init(project={project_name}, name={experiment_id})")
 
-        os.environ["WANDB_API_KEY"] = "62b3ff92fda1304714df4e51375d25f052e52253"
-
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
         mode = "offline" if debug else "online"
@@ -158,7 +155,7 @@ class WandbWrapper:
 
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None, extra_slurm_headers="") -> WandbWrapper:
-    debug = False # '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
+    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
 
