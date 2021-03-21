@@ -358,24 +358,3 @@ def git_sync(experiment_id, git_repo):
     return git_hash
 
 
-def get_git_repository():
-    def is_git_repo(path):
-        try:
-            _ = git.Repo(path)
-            return True
-        except git.InvalidGitRepositoryError:
-            return False
-
-    current_absolute_path = os.path.dirname(hyperparams["__file__"])
-    while not is_git_repo(current_absolute_path):
-        os.chdir("..")
-        current_absolute_path = os.getcwd()
-
-    try:
-        git_repo = git.Repo(current_absolute_path)
-    except git.InvalidGitRepositoryError:
-        raise ValueError("No git init in the current folder and not in any of its subdirectories!")
-
-    os.chdir(os.path.dirname(hyperparams["__file__"]))
-
-    return git_repo
