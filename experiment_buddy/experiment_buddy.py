@@ -238,7 +238,7 @@ def _open_ssh_session(hostname):
     except KeyError:
         pass
 
-    try:
+    try: # TODO fix this https://linuxize.com/post/using-the-ssh-config-file/
         kwargs_connection["port"] = os.environ["BUDDY_PORT"]
     except KeyError:
         pass
