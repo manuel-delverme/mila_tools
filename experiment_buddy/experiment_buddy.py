@@ -161,8 +161,6 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
 
-    # lia way TODO
-    git_repo = get_git_repository()
     try:
         git_repo = git.Repo(search_parent_directories=True)
     except git.InvalidGitRepositoryError:
