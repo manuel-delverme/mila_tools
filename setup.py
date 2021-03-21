@@ -1,5 +1,5 @@
 """ code adapted from here """
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Note: To use the 'upload' functionality of this file, you must:
@@ -16,15 +16,14 @@ from setuptools import find_packages, setup, Command
 NAME = 'experiment_buddy'
 DESCRIPTION = 'My short description for my project.'
 URL = 'https://github.com/ministry-of-silly-code/experiment_buddy'
-EMAIL = 'me@example.com'
+EMAIL = 'manueldelverme@gmail.com'
 AUTHOR = 'Buzatu Ionelia, Manuel Del Verme'
 REQUIRES_PYTHON = '>=3.7.0'
 VERSION = '0.0.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'jax'
-    # 'requests', 'maya', 'records',
+    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'PyYaml', 'paramiko', 'tqdm'
 ]
 
 # What packages are optional?
@@ -101,8 +100,8 @@ setup(
     description=DESCRIPTION,
     long_description=long_description,
     long_description_content_type='text/markdown',
-    author='Ionelia Buzatu, Manuel Del Verme',
-    maintainer='Manuel Del Verme, Ionelia Buzatu',
+    author='Manuel Del Verme, Ionelia Buzatu',
+    maintainer='Ionelia Buzatu, Manuel Del Verme',
     author_email=EMAIL,
     python_requires=REQUIRES_PYTHON,
     url=URL,
