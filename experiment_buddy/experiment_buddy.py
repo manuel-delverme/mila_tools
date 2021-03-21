@@ -157,7 +157,7 @@ class WandbWrapper:
 
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None, extra_slurm_headers="") -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
+    debug = False # '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
 
