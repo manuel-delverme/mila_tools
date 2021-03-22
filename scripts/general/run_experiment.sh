@@ -25,6 +25,8 @@ cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
+source ./rl-benchmarks/benchmarksVirtualenv37/bin/activate
+
 if ! source $HOME/venv/bin/activate; then
   log "Setting up venv @ $HOME/venv..."
   python3 -m venv $HOME/"venv"
