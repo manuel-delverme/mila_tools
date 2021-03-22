@@ -27,13 +27,13 @@ log "pwd is now $(pwd)"
 
 source ./rl-benchmarks/benchmarksVirtualenv37/bin/activate
 
-if ! source $HOME/venv/bin/activate; then
-  log "Setting up venv @ $HOME/venv..."
-  python3 -m venv $HOME/"venv"
-  source $HOME/venv/bin/activate
+if ! source $HOME/buddy-venv/bin/activate; then
+  log "Setting up venv @ $HOME/buddy-venv..."
+  python3 -m venv $HOME/"buddy-venv"
+  source $HOME/buddy-venv/bin/activate
 fi
 
-log "Using shared venv @ $HOME/venv"
+log "Using shared venv @ $HOME/buddy-venv"
 
 python3 -m pip install --upgrade pip
 
