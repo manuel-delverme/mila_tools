@@ -18,6 +18,8 @@ import wandb.cli
 import yaml
 from paramiko.ssh_exception import SSHException
 
+from experiment_buddy.utils import check_if_has_slurm
+
 try:
     import torch
 except ImportError:
@@ -80,7 +82,9 @@ def _valid_hyperparam(key, value):
 
 class WandbWrapper:
     def __init__(self, experiment_id, project_name, debug, entity=None, local_tensorboard=None):
-        # proj name is git root folder name
+        """
+        project_name is the git root folder name
+        """
         print(f"wandb.init(project={project_name}, name={experiment_id})")
 
         # Calling wandb.method is equivalent to calling self.run.method
@@ -109,7 +113,10 @@ class WandbWrapper:
                     setattr(wandb.config, name, str(value))
                 else:
                     print(
-                        f"not setting {name} to {str(value)}, str because its already {getattr(wandb.config, name)}, {type(getattr(wandb.config, name))}")
+                        f"not setting {name} to {str(value)}, "
+                        f"str because its already {getattr(wandb.config, name)}, "
+                        f"{type(getattr(wandb.config, name))}"
+                    )
 
         for k, v in hyperparams.items():
             register_param(k, v)
@@ -128,7 +135,8 @@ class WandbWrapper:
         if self.tensorboard:
             self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
 
-    def add_histogram(self, tag, values, global_step):
+    @staticmethod
+    def add_histogram(tag, values, global_step):
         if len(values) == 2:
             wandb.log({tag: wandb.Histogram(np_histogram=values)}, step=global_step, commit=False)
         else:
@@ -155,9 +163,11 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None, extra_slurm_headers="") -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
-    is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
+           extra_slurm_headers="") -> WandbWrapper:
+    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get(
+        'BUDDY_DEBUG_DEPLOYMENT', False)
+    is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not host
 
     try:
@@ -231,21 +241,16 @@ def _open_ssh_session(hostname):
     """ TODO: move this to utils.py or to a class (better)
         TODO add time-out for unknown host
      """
-    kwargs_connection = {
-        "host": hostname
-    }
-    try:
-        kwargs_connection["connect_kwargs"] = {"password": os.environ["BUDDY_PASSWORD"]}
-    except KeyError:
-        pass
 
     try:
-        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=10)
+        ssh_session = fabric.Connection(host=hostname, connect_timeout=10)
         ssh_session.run("")
     except SSHException as e:
-        raise SSHException("SSH connection failed!,"
-                           f"Make sure you can successfully run `ssh {hostname}` with no parameters, any parameters should be set in the ssh_config file"
-                           "If you need a password to authenticate set the Environment variable BUDDY_PASSWORD.")
+        raise SSHException(
+            "SSH connection failed!,"
+            f"Make sure you can successfully run `ssh {hostname}` with no parameters, "
+            f"any parameters should be set in the ssh_config file"
+        )
 
     return ssh_session
 
@@ -255,8 +260,8 @@ def _ensure_scripts(hostname, extra_slurm_header):
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     remote_tmp_folder = retr.stdout.strip() + "/"
 
-    has_slurm = ssh_session.run("/opt/slurm/bin/scontrol ping")
-    if has_slurm.ok:
+    has_slurm = check_if_has_slurm(ssh_session)
+    if has_slurm:
         scripts_dir = os.path.join(SCRIPTS_PATH, "slurm")
     else:
         scripts_dir = os.path.join(SCRIPTS_PATH, "general")
@@ -304,8 +309,9 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
                 raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
 
             try:
-                wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml],
-                                                       stderr=subprocess.STDOUT).decode("utf-8")
+                wandb_stdout = subprocess.check_output(
+                    ["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml],
+                    stderr=subprocess.STDOUT).decode("utf-8")
             except subprocess.CalledProcessError as e:
                 print(e.output.decode("utf-8"))
                 raise e
@@ -320,7 +326,6 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
             ssh_command = "bash -l {0}run_experiment.sh {1} {2} {3}"
             print("monitor your run on https://wandb.ai/")
 
-    # TODO: assert -e git+git@github.com:manuel-delverme/experiment_buddy.git#egg=experiment_buddy is in requirements.txt
     scripts_folder, ssh_session = scripts_folder.result()
     ssh_command = ssh_command.format(scripts_folder, *ssh_args)
     print(ssh_command)
@@ -339,7 +344,8 @@ def git_sync(experiment_id, git_repo):
             subprocess.check_output(f"git commit -m '{experiment_id}'", shell=True)
         except subprocess.CalledProcessError as e:
             git_hash = git_repo.commit().hexsha
-            subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)  # Ensure the code is remote
+            # Ensure the code is remote
+            subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)
         else:
             git_hash = git_repo.commit().hexsha
             tag_name = f"snapshot/{active_branch}/{git_hash}"
