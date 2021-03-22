@@ -79,7 +79,9 @@ def _valid_hyperparam(key, value):
 
 class WandbWrapper:
     def __init__(self, experiment_id, project_name, debug, entity=None, local_tensorboard=None):
-        # proj name is git root folder name
+        """
+        project_name is the git root folder name
+        """
         print(f"wandb.init(project={project_name}, name={experiment_id})")
 
         # Calling wandb.method is equivalent to calling self.run.method
@@ -108,7 +110,10 @@ class WandbWrapper:
                     setattr(wandb.config, name, str(value))
                 else:
                     print(
-                        f"not setting {name} to {str(value)}, str because its already {getattr(wandb.config, name)}, {type(getattr(wandb.config, name))}")
+                        f"not setting {name} to {str(value)}, "
+                        f"str because its already {getattr(wandb.config, name)}, "
+                        f"{type(getattr(wandb.config, name))}"
+                    )
 
         for k, v in hyperparams.items():
             register_param(k, v)
@@ -127,7 +132,8 @@ class WandbWrapper:
         if self.tensorboard:
             self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
 
-    def add_histogram(self, tag, values, global_step):
+    @staticmethod
+    def add_histogram(tag, values, global_step):
         if len(values) == 2:
             wandb.log({tag: wandb.Histogram(np_histogram=values)}, step=global_step, commit=False)
         else:
