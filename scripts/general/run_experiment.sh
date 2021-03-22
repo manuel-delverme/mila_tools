@@ -25,7 +25,7 @@ cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
-source ./rl-benchmarks/benchmarksVirtualenv37/bin/activate
+source $HOME/rl-benchmarks/benchmarksVirtualenv37/bin/activate
 
 if ! source $HOME/buddy-venv/bin/activate; then
   log "Setting up venv @ $HOME/buddy-venv..."
