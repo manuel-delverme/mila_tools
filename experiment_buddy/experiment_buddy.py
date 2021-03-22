@@ -154,7 +154,8 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None, extra_slurm_headers="") -> WandbWrapper:
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
+           extra_slurm_headers="") -> WandbWrapper:
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
@@ -230,26 +231,16 @@ def _open_ssh_session(hostname):
     """ TODO: move this to utils.py or to a class (better)
         TODO add time-out for unknown host
      """
-    kwargs_connection = {
-        "host": hostname
-    }
-    try:
-        kwargs_connection["connect_kwargs"] = {"password": os.environ["BUDDY_PASSWORD"]}
-    except KeyError:
-        pass
-
-    try: # TODO fix this https://linuxize.com/post/using-the-ssh-config-file/
-        kwargs_connection["port"] = os.environ["BUDDY_PORT"]
-    except KeyError:
-        pass
 
     try:
-        ssh_session = fabric.Connection(**kwargs_connection, connect_timeout=10)
+        ssh_session = fabric.Connection(host=hostname, connect_timeout=10)
         ssh_session.run("")
     except SSHException as e:
-        raise SSHException("SSH connection failed!,"
-                           f"Make sure you can successfully run `ssh {hostname}` with no parameters, any parameters should be set in the ssh_config file"
-                           "If you need a password to authenticate set the Environment variable BUDDY_PASSWORD.")
+        raise SSHException(
+            "SSH connection failed!,"
+            f"Make sure you can successfully run `ssh {hostname}` with no parameters, "
+            f"any parameters should be set in the ssh_config file"
+        )
 
     return ssh_session
 
@@ -308,8 +299,9 @@ def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, proj
                 raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
 
             try:
-                wandb_stdout = subprocess.check_output(["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml],
-                                                       stderr=subprocess.STDOUT).decode("utf-8")
+                wandb_stdout = subprocess.check_output(
+                    ["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml],
+                    stderr=subprocess.STDOUT).decode("utf-8")
             except subprocess.CalledProcessError as e:
                 print(e.output.decode("utf-8"))
                 raise e
@@ -342,7 +334,8 @@ def git_sync(experiment_id, git_repo):
             subprocess.check_output(f"git commit -m '{experiment_id}'", shell=True)
         except subprocess.CalledProcessError as e:
             git_hash = git_repo.commit().hexsha
-            subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)  # Ensure the code is remote
+            subprocess.check_output(f"git push {git_repo.remote()} {active_branch}",
+                                    shell=True)  # Ensure the code is remote
         else:
             git_hash = git_repo.commit().hexsha
             tag_name = f"snapshot/{active_branch}/{git_hash}"
@@ -352,5 +345,3 @@ def git_sync(experiment_id, git_repo):
     finally:
         subprocess.check_output(f"git checkout {active_branch}", shell=True)
     return git_hash
-
-
