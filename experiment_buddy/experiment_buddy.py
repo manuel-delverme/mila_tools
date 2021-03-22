@@ -156,7 +156,8 @@ class WandbWrapper:
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
            extra_slurm_headers="") -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
+    debug = False # " '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get(
+    # 'BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
     local_run = not host
 
@@ -186,7 +187,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **wandb_kwargs)
 
-    experiment_id = _ask_experiment_id(host, sweep_yaml)
+    experiment_id = "debug" # _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)

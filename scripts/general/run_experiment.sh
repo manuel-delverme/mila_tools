@@ -39,3 +39,7 @@ log "installing experiment_buddy"
 pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy#egg=experiment_buddy
 
 python3 -m pip install -r "requirements.txt" --exists-action w
+
+log "python3 $2"
+#byobu python3 -O -u $2
+python3 -O -u $2
