@@ -158,7 +158,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
            extra_slurm_headers="") -> WandbWrapper:
     debug = False # " '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get(
     # 'BUDDY_DEBUG_DEPLOYMENT', False)
-    is_running_remotely = "SLURM_JOB_ID" in os.environ.keys()
+    is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not host
 
     try:
