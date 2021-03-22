@@ -17,6 +17,7 @@ import wandb
 import wandb.cli
 import yaml
 from paramiko.ssh_exception import SSHException
+
 from experiment_buddy.utils import check_if_has_slurm
 
 try:
@@ -161,7 +162,7 @@ class WandbWrapper:
 
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
-           extra_slurm_headers="", python_interpreter="") -> WandbWrapper:
+           extra_slurm_headers="") -> WandbWrapper:
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get(
         'BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
@@ -204,9 +205,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
         elif experiment_id.endswith("!"):
             extra_slurm_headers += "\n#SBATCH --partition=main"
 
-        _commit_and_sendjob(
-            host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers, python_interpreter
-        )
+        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
         sys.exit()
 
 
@@ -293,10 +292,7 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-def _commit_and_sendjob(
-        hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header,
-        python_interpreter
-):
+def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header):
     git_url = git_repo.remotes[0].url
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header)
@@ -324,7 +320,7 @@ def _commit_and_sendjob(
             ssh_args = (git_url, sweep_id, hash_commit)
             ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
         else:
-            ssh_args = (git_url, entrypoint, hash_commit, python_interpreter)
+            ssh_args = (git_url, entrypoint, hash_commit)
             ssh_command = "bash -l {0}run_experiment.sh {1} {2} {3}"
             print("monitor your run on https://wandb.ai/")
 

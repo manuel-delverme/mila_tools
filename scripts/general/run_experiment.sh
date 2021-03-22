@@ -25,11 +25,6 @@ cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
-if [ -n "$4" ]
-  then
-    source $4
-fi
-
 if ! source $HOME/buddy-venv/bin/activate; then
   log "Setting up venv @ $HOME/buddy-venv..."
   python3 -m venv $HOME/"buddy-venv"
