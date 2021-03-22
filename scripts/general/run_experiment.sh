@@ -25,10 +25,8 @@ cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
-if [ -z "$4" ]
+if [ -n "$4" ]
   then
-    echo "$4 not given"
-  else
     source $4
 fi
 
