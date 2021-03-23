@@ -336,7 +336,7 @@ def git_sync(experiment_id, git_repo):
         subprocess.check_output(f"git add .", shell=True)
 
         try:
-            subprocess.check_output(f"git commit -m '{experiment_id}'", shell=True)
+            subprocess.check_output(f"git commit --no-verify -m '{experiment_id}'", shell=True)
         except subprocess.CalledProcessError as e:
             git_hash = git_repo.commit().hexsha
             subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)  # Ensure the code is remote
