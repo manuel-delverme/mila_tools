@@ -42,4 +42,4 @@ python3 -m pip install -r "requirements.txt" --exists-action w
 
 log "python3 $2"
 export BUDDY_IS_DEPLOYED=1
-screen -d -m & python3 -O -u $2
+screen -d -m python3 -O -u $2
