@@ -1,7 +1,7 @@
-import invoke
 import os
+
+import invoke
 from git.util import IterableList
-import git
 
 
 def check_if_has_slurm(ssh_session):
