@@ -1,4 +1,4 @@
-import ast
+import argparse
 import concurrent.futures
 import datetime
 import os
@@ -15,7 +15,6 @@ import tensorboardX
 import tqdm
 import wandb
 import wandb.cli
-import argparse
 import yaml
 from paramiko.ssh_exception import SSHException
 
@@ -43,6 +42,8 @@ def register(config_params):
         raise RuntimeError("refusing to overwrite registered parameters")
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('_ignored', nargs='*')
+
     for k, v in config_params.items():
         if k.startswith(wandb_escape):
             raise NameError(f"{wandb_escape} is a reserved prefix")
