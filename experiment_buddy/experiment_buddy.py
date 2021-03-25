@@ -333,12 +333,12 @@ def git_sync(experiment_id, git_repo):
         except subprocess.CalledProcessError as e:
             git_hash = git_repo.commit().hexsha
             # Ensure the code is remote
-            subprocess.check_output(f"git push {git_repo.remote()} {active_branch}", shell=True)
+            subprocess.check_output(f"git push {git_repo.remotes[0]} {active_branch}", shell=True)
         else:
             git_hash = git_repo.commit().hexsha
             tag_name = f"snapshot/{active_branch}/{git_hash}"
             subprocess.check_output(f"git tag {tag_name}", shell=True)
-            subprocess.check_output(f"git push {git_repo.remote()} {tag_name}", shell=True)  # send to online repo
+            subprocess.check_output(f"git push {git_repo.remotes[0]} {tag_name}", shell=True)  # send to online repo
             subprocess.check_output(f"git reset HEAD~1", shell=True)  # untrack the changes
     finally:
         subprocess.check_output(f"git checkout {active_branch}", shell=True)
