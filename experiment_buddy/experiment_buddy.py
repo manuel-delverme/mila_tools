@@ -48,7 +48,7 @@ def register(config_params):
         if k.startswith(wandb_escape):
             raise NameError(f"{wandb_escape} is a reserved prefix")
         if _is_valid_hyperparam(k, v):
-            parser.add_argument(f"--{k}", type=type(v), default=v)
+            parser.add_argument(f"--{k}", f"--^{k}", type=type(v), default=v)
 
     parsed = parser.parse_args()
 
