@@ -19,6 +19,7 @@ import yaml
 from paramiko.ssh_exception import SSHException
 
 from experiment_buddy.utils import check_if_has_slurm
+from experiment_buddy.utils import get_project_name
 
 try:
     import torch
@@ -175,7 +176,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
     except git.InvalidGitRepositoryError:
         raise ValueError(f"Could not find a git repo")
 
-    project_name = git_repo.remotes.origin.url.split('.git')[0].split('/')[-1]
+    project_name = get_project_name(git_repo)
 
     if local_run and sweep_yaml:
         raise NotImplemented("Local sweeps are not supported")
