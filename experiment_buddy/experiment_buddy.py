@@ -85,7 +85,7 @@ class WandbWrapper:
         os.makedirs(self.objects_path, exist_ok=True)
 
         def register_param(name, value, prefix=""):
-            if not _valid_hyperparam(name, value):
+            if not _is_valid_hyperparam(name, value):
                 return
 
             if name == "_extra_modules_":
