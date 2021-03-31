@@ -19,7 +19,7 @@ source /etc/profile
 log "Refreshing modules..."
 module purge
 module load python/3.7
-module load cuda/10.1/cudnn/7.6
+module load pytorch/1.7
 
 FOLDER=$SLURM_TMPDIR/src/
 
