@@ -1,19 +1,21 @@
 #! /bin/bash
 set -e
+
 # Module system
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
 }
-SCRIPT=$(realpath $0)
-log "script realpath: $SCRIPT"
-SCRIPTS_FOLDER=$(dirname $SCRIPT)
-log "scripts home: $SCRIPTS_FOLDER"
 
 source /etc/profile
 log "Refreshing modules..."
 module purge
-module load python/3.8
+module load python/3.7
 module load cuda/10.1/cudnn/7.6
+
+SCRIPT=$(realpath $0)
+log "script realpath: $SCRIPT"
+SCRIPTS_FOLDER=$(dirname $SCRIPT)
+log "scripts home: $SCRIPTS_FOLDER"
 
 log "cd $HOME/experiments/"
 mkdir -p $HOME/experiments/
