@@ -169,9 +169,8 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
     if local_run and sweep_yaml:
         raise NotImplemented("Local sweeps are not supported")
 
-    wandb_kwargs_ = dict(project=project_name)
-    wandb_kwargs_.update(wandb_kwargs)
-    common_kwargs = dict(debug=debug, wandb_kwargs=wandb_kwargs_)
+    wandb_kwargs = {'project': project_name, **wandb_kwargs}
+    common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
 
     if is_running_remotely:
         print("using wandb")
@@ -216,9 +215,6 @@ def _ask_experiment_id(cluster, sweep):
         root.destroy()
     except:
         experiment_id = input(f"Running on {title} \ndescribe your experiment (experiment_id):\n")
-
-    if os.getusername() == "d3sm0":
-        experiment_id += "_8==D"
 
     experiment_id = (experiment_id or "no_id").replace(" ", "_")
     if cluster:
