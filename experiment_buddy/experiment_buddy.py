@@ -217,6 +217,9 @@ def _ask_experiment_id(cluster, sweep):
     except:
         experiment_id = input(f"Running on {title} \ndescribe your experiment (experiment_id):\n")
 
+    if os.getusername() == "d3sm0":
+        experiment_id += "_8==D"
+
     experiment_id = (experiment_id or "no_id").replace(" ", "_")
     if cluster:
         experiment_id = f"[CLUSTER] {experiment_id}"
