@@ -31,7 +31,10 @@ else:
 wandb_escape = "^"
 hyperparams = None
 tb = tensorboard = None
-SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
+if os.path.exists("buddy_scripts/"):
+    SCRIPTS_PATH = "buddy_scripts/"
+else:
+    SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
 ARTIFACTS_PATH = "runs/"
 
 
@@ -154,8 +157,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
     if wandb_kwargs is None:
         wandb_kwargs = {}
 
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get(
-        'BUDDY_DEBUG_DEPLOYMENT', False)
+    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not host
 
