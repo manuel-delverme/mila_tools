@@ -259,8 +259,6 @@ def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) ->
     for file_path in os.listdir(scripts_dir):
         script_path = os.path.join(scripts_dir, file_path)
         if extra_slurm_header and file_path in ("run_sweep.sh", "srun_python.sh"):
-        assert os.path.exists(script_path)
-        if extra_slurm_header and file_path in ("localenv_sweep.sh", "srun_python.sh"):
             with open(script_path) as fin:
                 rows = fin.readlines()
 
