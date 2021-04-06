@@ -33,7 +33,10 @@ else:
 wandb_escape = "^"
 hyperparams = None
 tb = tensorboard = None
-SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
+if os.path.exists("buddy_scripts/"):
+    SCRIPTS_PATH = "buddy_scripts/"
+else:
+    SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
 ARTIFACTS_PATH = "runs/"
 DEFAULT_WANDB_KEY = os.path.join(os.environ["HOME"], ".netrc")
 
@@ -73,16 +76,14 @@ def _is_valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    def __init__(self, experiment_id, project_name, debug, entity=None, local_tensorboard=None):
+    def __init__(self, experiment_id, debug, wandb_kwargs, local_tensorboard=None):
         """
         project_name is the git root folder name
         """
-        print(f"wandb.init(project={project_name}, name={experiment_id})")
-
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
-        mode = "offline" if debug else "online"
-        self.run = wandb.init(project=project_name, name=experiment_id, entity=entity, mode=mode)
+        wandb_kwargs["mode"] = wandb_kwargs.get("mode", "offline" if debug else "online")
+        self.run = wandb.init(name=experiment_id, **wandb_kwargs)
 
         self.tensorboard = local_tensorboard
         self.objects_path = os.path.join(ARTIFACTS_PATH, "objects/", self.run.name)
@@ -155,10 +156,11 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
-           extra_slurm_headers="") -> WandbWrapper:
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get(
-        'BUDDY_DEBUG_DEPLOYMENT', False)
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="") -> WandbWrapper:
+    if wandb_kwargs is None:
+        wandb_kwargs = {}
+
+    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not host
 
@@ -172,7 +174,8 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
     if local_run and sweep_yaml:
         raise NotImplemented("Local sweeps are not supported")
 
-    wandb_kwargs = dict(project_name=project_name, entity=entity, debug=debug)
+    wandb_kwargs = {'project': project_name, **wandb_kwargs}
+    common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
 
     if is_running_remotely:
         print("using wandb")
@@ -180,19 +183,19 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, entity=None,
         jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         jid += os.environ.get("SLURM_JOB_ID", "")
         # TODO: turn into a big switch based on scheduler
-        return WandbWrapper(f"{experiment_id}_{jid}", **wandb_kwargs)
+        return WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
 
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **wandb_kwargs)
+        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
 
     experiment_id = _ask_experiment_id(host, sweep_yaml)
     print(f"experiment_id: {experiment_id}")
     if local_run:
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **wandb_kwargs)
+        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
     else:
         if experiment_id.endswith("!!"):
             extra_slurm_headers += "\n#SBATCH --partition=unkillable"
@@ -255,6 +258,7 @@ def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) ->
     scripts_dir = os.path.join(SCRIPTS_PATH, backend.value)
     for file_path in os.listdir(scripts_dir):
         script_path = os.path.join(scripts_dir, file_path)
+        if extra_slurm_header and file_path in ("run_sweep.sh", "srun_python.sh"):
         assert os.path.exists(script_path)
         if extra_slurm_header and file_path in ("localenv_sweep.sh", "srun_python.sh"):
             with open(script_path) as fin:
@@ -319,7 +323,7 @@ def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_
             sweep_id = row.split()[-1].strip()
 
             ssh_args = (git_url, sweep_id, hash_commit)
-            ssh_command = "/opt/slurm/bin/sbatch {0}/localenv_sweep.sh {1} {2} {3}"
+            ssh_command = "/opt/slurm/bin/sbatch {0}/run_sweep.sh {1} {2} {3}"
         else:
             ssh_args = (git_url, entrypoint, hash_commit)
             ssh_command = "bash -l {0}run_experiment.sh {1} {2} {3}"
