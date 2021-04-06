@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import types
+from typing import Tuple, Any
 
 import cloudpickle
 import fabric
@@ -16,9 +17,10 @@ import tqdm
 import wandb
 import wandb.cli
 import yaml
+from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
 
-from experiment_buddy.utils import check_if_has_slurm
+from experiment_buddy.utils import get_backend
 from experiment_buddy.utils import get_project_name
 
 try:
@@ -33,6 +35,7 @@ hyperparams = None
 tb = tensorboard = None
 SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
 ARTIFACTS_PATH = "runs/"
+DEFAULT_WANDB_KEY = os.path.join(os.environ["HOME"], ".netrc")
 
 
 def register(config_params):
@@ -226,13 +229,13 @@ def _setup_tb(logdir):
     return tensorboardX.SummaryWriter(logdir=logdir)
 
 
-def _open_ssh_session(hostname):
+def _open_ssh_session(hostname: str) -> fabric.Connection:
     """ TODO: move this to utils.py or to a class (better)
         TODO add time-out for unknown host
      """
 
     try:
-        ssh_session = fabric.Connection(host=hostname, connect_timeout=10)
+        ssh_session = fabric.Connection(host=hostname, connect_timeout=10, forward_agent=True)
         ssh_session.run("")
     except SSHException as e:
         raise SSHException(
@@ -240,23 +243,19 @@ def _open_ssh_session(hostname):
             f"Make sure you can successfully run `ssh {hostname}` with no parameters, "
             f"any parameters should be set in the ssh_config file"
         )
-
     return ssh_session
 
 
-def _ensure_scripts(hostname, extra_slurm_header):
+def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) -> Tuple[Any, fabric.Connection]:
     ssh_session = _open_ssh_session(hostname)
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     remote_tmp_folder = retr.stdout.strip() + "/"
 
-    has_slurm = check_if_has_slurm(ssh_session)
-    if has_slurm:
-        scripts_dir = os.path.join(SCRIPTS_PATH, "slurm")
-    else:
-        scripts_dir = os.path.join(SCRIPTS_PATH, "general")
-
+    backend = get_backend(ssh_session, working_dir)
+    scripts_dir = os.path.join(SCRIPTS_PATH, backend.value)
     for file_path in os.listdir(scripts_dir):
         script_path = os.path.join(scripts_dir, file_path)
+        assert os.path.exists(script_path)
         if extra_slurm_header and file_path in ("localenv_sweep.sh", "srun_python.sh"):
             with open(script_path) as fin:
                 rows = fin.readlines()
@@ -270,9 +269,19 @@ def _ensure_scripts(hostname, extra_slurm_header):
                         rows.insert(flag_idx, "\n" + extra_slurm_header + "\n")
                         break
                 fout.write("".join(rows))
-
         ssh_session.put(script_path, remote_tmp_folder)
+
+    _check_or_copy_wandb_key(hostname, ssh_session)
+
     return remote_tmp_folder, ssh_session
+
+
+def _check_or_copy_wandb_key(hostname: str, ssh_session: fabric.Connection):
+    try:
+        ssh_session.run("test -f ~/.netrc")
+    except UnexpectedExit:
+        print(f"Wandb api key not found in {hostname}. Copying it from {DEFAULT_WANDB_KEY}")
+        ssh_session.put(DEFAULT_WANDB_KEY, ".netrc")
 
 
 def log_cmd(cmd, retr):
@@ -283,10 +292,11 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-def _commit_and_sendjob(hostname, experiment_id, sweep_yaml: str, git_repo, project_name, proc_num, extra_slurm_header):
+def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_repo: git.Repo, project_name: str,
+                        proc_num: int, extra_slurm_header: str):
     git_url = git_repo.remotes[0].url
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-        scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header)
+        scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header, git_repo.working_dir)
         hash_commit = git_sync(experiment_id, git_repo)
 
         entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
