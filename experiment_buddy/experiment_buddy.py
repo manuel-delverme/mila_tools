@@ -202,7 +202,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         elif experiment_id.endswith("!"):
             extra_slurm_headers += "\n#SBATCH --partition=main"
 
-        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers)
+        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers, wandb_kwargs)
         sys.exit()
 
 
@@ -295,7 +295,7 @@ def log_cmd(cmd, retr):
 
 
 def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_repo: git.Repo, project_name: str,
-                        proc_num: int, extra_slurm_header: str):
+                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict):
     git_url = git_repo.remotes[0].url
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         scripts_folder = executor.submit(_ensure_scripts, hostname, extra_slurm_header, git_repo.working_dir)
@@ -309,10 +309,14 @@ def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_
             if data_loaded["program"] != entrypoint:
                 raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
 
+            entity = []
+            if "entity" in wandb_kwargs:
+                entity = ["--entity", wandb_kwargs["entity"]]
+
+            args = ["wandb", "sweep", "--name", experiment_id, "--project", project_name, *entity, sweep_yaml]
+
             try:
-                wandb_stdout = subprocess.check_output(
-                    ["wandb", "sweep", "--name", experiment_id, "-p", project_name, sweep_yaml],
-                    stderr=subprocess.STDOUT).decode("utf-8")
+                wandb_stdout = subprocess.check_output(args, stderr=subprocess.STDOUT).decode("utf-8")
             except subprocess.CalledProcessError as e:
                 print(e.output.decode("utf-8"))
                 raise e
