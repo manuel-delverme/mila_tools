@@ -249,7 +249,7 @@ def _open_ssh_session(hostname: str) -> fabric.Connection:
     return ssh_session
 
 
-def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) -> Tuple[Any, fabric.Connection]:
+def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) -> Tuple[str, fabric.Connection]:
     ssh_session = _open_ssh_session(hostname)
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     remote_tmp_folder = retr.stdout.strip() + "/"
@@ -280,7 +280,7 @@ def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) ->
 
 def _check_or_copy_wandb_key(hostname: str, ssh_session: fabric.Connection):
     try:
-        ssh_session.run("test -f ~/.netrc")
+        ssh_session.run("test -f $HOME/.netrc")
     except UnexpectedExit:
         print(f"Wandb api key not found in {hostname}. Copying it from {DEFAULT_WANDB_KEY}")
         ssh_session.put(DEFAULT_WANDB_KEY, ".netrc")

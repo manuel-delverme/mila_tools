@@ -25,9 +25,6 @@ cd $EXPERIMENT_FOLDER
 git checkout $3
 log "pwd is now $(pwd)"
 
-sudo apt-get update
-sudo apt-get install python3-venv python3-pip
-
 if ! source $HOME/buddy-venv/bin/activate; then
   log "Setting up venv @ $HOME/buddy-venv..."
   python3 -m venv $HOME/"buddy-venv"
