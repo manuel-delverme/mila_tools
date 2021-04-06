@@ -1,8 +1,8 @@
 import enum
 import os
 
+import fabric
 import invoke
-from OpenSSL.SSL import Connection
 import git
 
 
@@ -12,7 +12,7 @@ class Backend(enum.Enum):
     DOCKER: str = "docker"
 
 
-def get_backend(ssh_session: Connection, project_dir: str) -> str:
+def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> str:
     try:
         ssh_session.run("/opt/slurm/bin/scontrol ping")
         return Backend.SLURM
@@ -31,7 +31,7 @@ def get_backend(ssh_session: Connection, project_dir: str) -> str:
 
 def get_project_name(git_repo: git.Repo) -> str:
     git_repo_remotes = git_repo.remotes
-    assert isinstance(git_repo_remotes, git.util.IterableList)
+    assert isinstance(git_repo_remotes, list)
     remote_url = git_repo_remotes[0].config_reader.get("url")
     project_name, _ = os.path.splitext(os.path.basename(remote_url))
     return project_name
