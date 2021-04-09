@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 import types
-from typing import Tuple, Any
+from typing import Tuple
 
 import cloudpickle
 import fabric
@@ -313,7 +313,7 @@ def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_
             if "entity" in wandb_kwargs:
                 entity = ["--entity", wandb_kwargs["entity"]]
 
-            args = ["wandb", "sweep", "--name", experiment_id, "--project", project_name, *entity, sweep_yaml]
+            args = ["wandb", "sweep", "--name", '"' + experiment_id + '"', "--project", project_name, *entity, sweep_yaml]
 
             try:
                 wandb_stdout = subprocess.check_output(args, stderr=subprocess.STDOUT).decode("utf-8")
