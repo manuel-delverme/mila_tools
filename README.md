@@ -2,6 +2,7 @@
 
 `experiment_buddy` aims to reduce the overhead to deploy experiments on servers.
 
+buddy is a work in progress, if you are intrerested in using it in your workflow, ping me in slack @delvermm
 
 It's important to reduce cognitive overload for the researcher measured as seconds-to-first-tensorboard datapoint
 
