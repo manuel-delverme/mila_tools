@@ -22,7 +22,8 @@ def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> 
     if not os.path.exists(os.path.join(project_dir, "Dockerfile")):
         return Backend.GENERAL
     try:
-        ssh_session.run("docker - v")
+        ssh_session.run("docker -v")
+        ssh_session.run("docker-compose -v")
         return Backend.DOCKER
     except invoke.exceptions.UnexpectedExit:
         pass
