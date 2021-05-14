@@ -208,7 +208,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
 
 
 def _ask_experiment_id(cluster, sweep):
-    logging.info("Name your run in the open pop-up window!")
+    logging.info("Name your run in the pop-up window!")
     title = f'{"[CLUSTER" if cluster else "[LOCAL"}'
     if sweep:
         title = f"{title}-SWEEP"
