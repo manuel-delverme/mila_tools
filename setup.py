@@ -1,7 +1,7 @@
 from setuptools import setup
 
 install_requires = [
-    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'PyYaml', 'paramiko','tqdm'
+    'GitPython', 'tensorboardX', 'matplotlib', 'wandb', 'fabric', 'cloudpickle', 'PyYaml', 'paramiko', 'tqdm', 'logging'
 ]
 
 setup(
