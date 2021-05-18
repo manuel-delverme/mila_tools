@@ -83,7 +83,8 @@ class WandbWrapper:
         # Calling wandb.method is equivalent to calling self.run.method
         # I'd rather to keep explicit tracking of which run this object is following
         wandb_kwargs["mode"] = wandb_kwargs.get("mode", "offline" if debug else "online")
-        wandb_kwargs["settings"] = wandb_kwargs.get("settings", wandb.Settings(start_method="fork"))
+        if not debug:
+            wandb_kwargs["settings"] = wandb_kwargs.get("settings", wandb.Settings(start_method="fork"))
         self.run = wandb.init(name=experiment_id, **wandb_kwargs)
 
         self.tensorboard = local_tensorboard
