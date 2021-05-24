@@ -17,11 +17,11 @@ import tqdm
 import wandb
 import wandb.cli
 import yaml
-from funcy import log_durations
 from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
 
-from experiment_buddy.utils import get_backend, remote_time_logger
+import experiment_buddy.utils
+from experiment_buddy.utils import get_backend
 from experiment_buddy.utils import get_project_name
 
 try:
@@ -159,7 +159,7 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-@log_durations(remote_time_logger, unit='s')
+@experiment_buddy.utils.telemetry
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="") -> WandbWrapper:
     if wandb_kwargs is None:
         wandb_kwargs = {}
