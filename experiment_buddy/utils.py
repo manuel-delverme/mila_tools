@@ -1,6 +1,9 @@
+import asyncio
+import atexit
 import enum
 import os
 
+import aiohttp
 import fabric
 import invoke
 import git
@@ -36,3 +39,25 @@ def get_project_name(git_repo: git.Repo) -> str:
     remote_url = git_repo_remotes[0].config_reader.get("url")
     project_name, _ = os.path.splitext(os.path.basename(remote_url))
     return project_name
+
+
+def fire_and_forget(f):
+    def wrapped(*args, **kwargs): return asyncio.ensure_future(f(*args, *kwargs))
+
+    return wrapped
+
+
+def async_cleanup():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+
+
+atexit.register(async_cleanup)
+
+
+@fire_and_forget
+async def remote_time_logger(elapsed: str):
+    elapsed = elapsed.strip().split(" ")[0]
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f'http://65.21.155.92?time={elapsed}') as response:
+            await response.text()
