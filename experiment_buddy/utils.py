@@ -46,7 +46,7 @@ def telemetry(f):
         retr = f(*args, **kwargs)
         toc = time.perf_counter()
         method_name = f.__name__
-        requests.get(f"65.21.155.92/{method_name}/{toc - tic}", timeout=2.)
+        requests.get(f"http://65.21.155.92/{method_name}/{toc - tic}", timeout=2.)
         return retr
 
     return wrapped_f
