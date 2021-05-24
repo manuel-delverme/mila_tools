@@ -1,13 +1,11 @@
-import asyncio
-import atexit
 import enum
 import os
 import time
 
-import aiohttp
 import fabric
-import invoke
 import git
+import invoke
+import requests
 
 
 class Backend(enum.Enum):
@@ -42,30 +40,13 @@ def get_project_name(git_repo: git.Repo) -> str:
     return project_name
 
 
-def fire_and_forget(f):
-    def wrapped(*args, **kwargs):
-        return asyncio.ensure_future(f(*args, *kwargs))
-
-    return wrapped
-
-
-def __async_cleanup():
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
-
-
-atexit.register(__async_cleanup)
-
-
 def telemetry(f):
     def wrapped_f(*args, **kwargs):
         tic = time.perf_counter()
         retr = f(*args, **kwargs)
         toc = time.perf_counter()
         method_name = f.__name__
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"65.21.155.92/{method_name}/{toc - tic}", timeout=2.) as response:
-                await response.text()
+        requests.get(f"65.21.155.92/{method_name}/{toc - tic}", timeout=2.)
         return retr
 
     return wrapped_f
