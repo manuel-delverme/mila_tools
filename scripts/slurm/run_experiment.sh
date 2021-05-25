@@ -39,9 +39,6 @@ log "Using shared venv @ $HOME/venv"
 
 python3 -m pip install --upgrade pip
 
-log "installing experiment_buddy"
-pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy#egg=experiment_buddy
-
 # sed -i '/torch.*/d' ./requirements.txt
 python3 -m pip install -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html
 
