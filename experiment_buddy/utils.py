@@ -1,11 +1,13 @@
+import asyncio
+import atexit
 import enum
 import os
-import time
 
+import aiohttp
 import fabric
-import git
 import invoke
-import requests
+import git
+from funcy import log_durations
 
 
 class Backend(enum.Enum):
@@ -40,13 +42,29 @@ def get_project_name(git_repo: git.Repo) -> str:
     return project_name
 
 
-def telemetry(f):
-    def wrapped_f(*args, **kwargs):
-        tic = time.perf_counter()
-        retr = f(*args, **kwargs)
-        toc = time.perf_counter()
-        method_name = f.__name__
-        requests.get(f"http://65.21.155.92/{method_name}/{toc - tic}", timeout=2.)
-        return retr
+def fire_and_forget(f):
+    def wrapped(*args, **kwargs):
+        return asyncio.ensure_future(f(*args, *kwargs))
 
-    return wrapped_f
+    return wrapped
+
+
+def __async_cleanup():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+
+
+atexit.register(__async_cleanup)
+
+
+@fire_and_forget
+async def __remote_time_logger(elapsed: str):
+    import re
+    elapsed, function_name = re.search(r'([\d.]+).+in (\w+)', elapsed).groups()
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f'http://65.21.155.92/{function_name}/{elapsed}') as response:
+            await response.text()
+
+
+telemetry = log_durations(__remote_time_logger, unit='s')

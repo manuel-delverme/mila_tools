@@ -10,7 +10,8 @@ install_requires = [
     'PyYaml',
     'paramiko',
     'tqdm',
-    'aiohttp'
+    'aiohttp',
+    'funcy'
 ]
 
 setup(
