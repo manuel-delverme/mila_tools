@@ -36,7 +36,7 @@ log "Using shared venv @ $HOME/buddy-venv"
 python3 -m pip install --upgrade pip
 
 log "installing experiment_buddy"
-pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy#egg=experiment_buddy
+pip3 install -e git+https://github.com/ministry-of-silly-code/experiment_buddy#egg=experiment_buddy --exists-action w
 
 python3 -m pip install --no-cache-dir -r "requirements.txt" --exists-action w
 
