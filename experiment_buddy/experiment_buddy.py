@@ -223,7 +223,11 @@ def _ask_experiment_id(cluster, sweep):
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
         root.destroy()
     except:
-        experiment_id = input(f"Running on {title}\ndescribe your experiment (experiment_id):\n")
+        if os.environ['BUDDY_CURRENT_TESTING_BRANCH']:
+            import uuid
+            experiment_id = f'TESTING_BRANCH-{os.environ["BUDDY_CURRENT_TESTING_BRANCH"]}-{uuid.uuid4()}'
+        else:
+            experiment_id = input(f"Running on {title}\ndescribe your experiment (experiment_id):\n")
 
     experiment_id = (experiment_id or "no_id").replace(" ", "_")
     if cluster:
@@ -257,6 +261,7 @@ def _ensure_scripts(hostname: str, extra_slurm_header: str, working_dir: str) ->
     ssh_session = _open_ssh_session(hostname)
     retr = ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
     remote_tmp_folder = retr.stdout.strip() + "/"
+    ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
 
     backend = get_backend(ssh_session, working_dir)
     scripts_dir = os.path.join(SCRIPTS_PATH, backend.value)
