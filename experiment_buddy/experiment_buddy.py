@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import logging
 import os
 import subprocess
 import sys
@@ -216,6 +217,7 @@ def _ask_experiment_id(cluster, sweep):
 
     try:
         import tkinter.simpledialog  # fails on the server or colab
+        logging.info("Name your run in the pop-up window!")
         root = tkinter.Tk()
         root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
