@@ -38,9 +38,13 @@ function load_git_folder() {
 function set_up_venv() {
   VENV_NAME=$1
 
-  [ ! -d /tmp/"$VENV_NAME" ] && python3 -m virtualenv /tmp/"$VENV_NAME" > /dev/null
+  if ! source $HOME/venv/bin/activate; then
+    log "Setting up venv @ $HOME/venv..."
+    python3 -m virtualenv $HOME/"venv"
+    source $HOME/venv/bin/activate
+  fi
 
-  source /tmp/"$VENV_NAME"/bin/activate > /dev/null
+  log "Using shared venv @ $HOME/venv"
 
   python3 -m pip -q install --upgrade pip
 
