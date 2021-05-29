@@ -30,6 +30,8 @@ except ImportError:
 else:
     TORCH_ENABLED = True
 
+logging.basicConfig(level=logging.INFO)
+
 wandb_escape = "^"
 hyperparams = None
 tb = tensorboard = None
