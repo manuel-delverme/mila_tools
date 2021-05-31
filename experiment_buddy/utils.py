@@ -51,7 +51,7 @@ def fire_and_forget(f):
 
 def __async_cleanup():
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(asyncio.gather(*asyncio.Task.all_tasks()))
+    loop.run_until_complete(asyncio.gather(*asyncio.all_tasks(loop)))
 
 
 atexit.register(__async_cleanup)
