@@ -9,9 +9,9 @@ Quick start
 
 buddy is a work in progress, if you are intrerested in using it in your workflow, ping me in slack @delvermm
 
-It's important to reduce cognitive overload for the researcher measured as seconds-to-first-tensorboard datapoint
+It's important to reduce cognitive overload for the researcher measured, as measured in seconds-to-first-tensorboard datapoint
 
-Right now it's responsabilities cover:
+Right now its responsibilities cover:
 1. Deployment on servers
 1. Handling of Sweeps
 1. Tracking of hyperparameters
@@ -93,6 +93,6 @@ docker run -v ~/.ssh:/root/.ssh --rm -i \
 #To allow the docker to communicate with the cluster you may need to change your ~/.ssh/config permissions 
 sudo chown root:$USER ~/.ssh/config && sudo chmod 640 ~/.ssh/config
 
-#The first runs is quite slow, give it a few minutes 
+#The first run is quite slow, give it a few minutes 
 nodemon --exec "./test_scripts/watcher.sh" -e py,sh
 ```
