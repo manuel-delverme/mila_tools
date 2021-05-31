@@ -9,7 +9,7 @@ Quick start
 
 buddy is a work in progress, if you are intrerested in using it in your workflow, ping me in slack @delvermm
 
-It's important to reduce cognitive overload for the researcher measured, as measured in seconds-to-first-tensorboard datapoint
+It's important to reduce cognitive overload for the researcher, as measured in seconds-to-first-tensorboard-datapoint.
 
 Right now its responsibilities cover:
 1. Deployment on servers
