@@ -1,6 +1,4 @@
-~`mila_tools` aims to reduce the overhead to deploy experiments on mila clusters.~
-@Mila users, the documentation is currently out of date,
-ping me on slack @delvermm to understand how to get started.
+`mila_tools` aims to reduce the overhead to deploy experiments on mila clusters.
 
 ## How to develop
 Quick start
