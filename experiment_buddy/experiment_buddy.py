@@ -348,6 +348,11 @@ def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
 
 
 def git_sync(experiment_id, git_repo):
+    if any(url.lower().startswith('https://') for url in git_repo.remote('origin').urls):
+        raise Exception("Can't use HTTPS urls for your project, please, switch to GIT urls\n"
+                        "Look here for more infos https://docs.github.com/en/github/getting-started-with-github/"
+                        "getting-started-with-git/managing-remote-repositories#changing-a-remote-repositorys-url")
+
     active_branch = git_repo.active_branch.name
     try:
         subprocess.check_output(f"git checkout --detach", shell=True)  # move changest to snapshot branch
