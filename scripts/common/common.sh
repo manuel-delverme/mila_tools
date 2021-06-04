@@ -46,7 +46,6 @@ function set_up_venv() {
 
   log "Using shared venv @ $HOME/venv"
 
-  python3 -m pip -q install --upgrade pip
-
-  python3 -m pip -q install -r "requirements.txt" --exists-action w
+  python3 -m pip install --upgrade pip
+  python3 -m pip install -r "requirements.txt" --exists-action w | grep -v "Requirement already satisfied"
 }
