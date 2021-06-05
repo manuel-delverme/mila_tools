@@ -2,11 +2,12 @@ import asyncio
 import atexit
 import enum
 import os
+import subprocess
 
 import aiohttp
 import fabric
-import invoke
 import git
+import invoke
 from funcy import log_durations
 
 
@@ -65,6 +66,12 @@ async def __remote_time_logger(elapsed: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(f'http://65.21.155.92/{function_name}/{elapsed}') as response:
             await response.text()
+
+
+def _get_job_info(jid):
+    result = subprocess.check_output(f"/opt/slurm/bin/sacct --brief -j {jid}".split()).decode()
+    jid, state, exit_code = result.split("\n")[2].split()
+    return state
 
 
 telemetry = log_durations(__remote_time_logger, unit='s')
