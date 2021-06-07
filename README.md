@@ -33,7 +33,7 @@ virtualenv buddy-env
 source ./buddy-env/bin/activate
 
 # 3 - Install the dependencies
-pip install -q -e git+https://github.com/ministry-of-silly-code/experiment_buddy.git@feature/flow_test#egg=experiment_buddy # ToDo temporary branch for test, it will be from master
+pip install -q -e git+https://github.com/ministry-of-silly-code/experiment_buddy.git
 pip install -q -r ./requirements.txt
 
 # Run your experiments
