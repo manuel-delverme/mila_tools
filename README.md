@@ -33,8 +33,8 @@ virtualenv buddy-env
 source ./buddy-env/bin/activate
 
 # 3 - Install the dependencies
-pip install -q -e git+https://github.com/ministry-of-silly-code/experiment_buddy.git
-pip install -q -r ./requirements.txt
+pip install -e git+https://github.com/ministry-of-silly-code/experiment_buddy.git#egg=experiment_buddy
+pip install -r ./requirements.txt
 
 # Run your experiments
 python ./mnist_classifier.py
