@@ -37,14 +37,16 @@ jobs:
           git config --global user.email "$GIT_MAIL"
           git config --global user.name "$GIT_NAME"
           
-          npm i -g nodemon meta 
-          pip install virtualenv
-          
-          meta git clone git@github.com:ministry-of-silly-code/buddy_metarepo.git
-          cd buddy_metarepo
-          (cd experiment_buddy && git checkout ${GITHUB_REF#refs/heads/})
-                    
+          pip install -q virtualenv
+
+          git clone git@github.com:ministry-of-silly-code/examples.git
+          cd examples
+
+          export BUDDY_CURRENT_TESTING_BRANCH=${GITHUB_REF#refs/heads/}
+          sed -i -e "s|\.git.*\#egg|\.git\@$BUDDY_CURRENT_TESTING_BRANCH\#egg|" requirements.txt
+
           virtualenv buddy_env
           source ./buddy_env/bin/activate
-          
-          ./test_scripts/watcher.sh local
+          pip install -q -r ./requirements.txt
+          DEPLOY_DESTINATION=local python ./mnist_classifier.py
+          DEPLOY_DESTINATION=cluster python ./mnist_classifier.py
