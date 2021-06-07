@@ -4,8 +4,7 @@ on:
   pull_request:
     branches: [master]
   push:
-    branches: [feature/ci-testing]
-  
+    branches: [feature/ci-testing-1]
   workflow_dispatch:
 
 jobs:
@@ -18,10 +17,34 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.7'
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.GIT_SSH_KEY }}
+          name: id_rsa # optional
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          config: ${{ secrets.SSH_CONFIG }} # ssh_config; optional
+          if_key_exists: replace # replace / ignore / fail; optional (defaults to fail)
       - run: |
+          set -e
+          set -x
+          
+          export GIT_MAIL=${{ secrets.GIT_MAIL }}
+          export GIT_NAME=${{ secrets.GIT_NAME }}
+          export TERM=xterm
+          export WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}
+          
+          git config --global user.email "$GIT_MAIL"
+          git config --global user.name "$GIT_NAME"
+          
           npm i -g nodemon meta 
+          pip install virtualenv
+          
           meta git clone git@github.com:ministry-of-silly-code/buddy_metarepo.git
           cd buddy_metarepo
+          (cd experiment_buddy && git checkout ${GITHUB_REF#refs/heads/})
+                    
           virtualenv buddy_env
           source ./buddy_env/bin/activate
+          
           ./test_scripts/watcher.sh local
