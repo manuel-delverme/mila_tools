@@ -4,7 +4,7 @@ set -e
 
 # Module system
 function log() {
-    echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
+  echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
 }
 
 function pull_experiment() {
