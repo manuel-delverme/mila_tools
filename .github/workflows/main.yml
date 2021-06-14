@@ -26,6 +26,9 @@ jobs:
           config: ${{ secrets.SSH_CONFIG }} # ssh_config; optional
           if_key_exists: replace # replace / ignore / fail; optional (defaults to fail)
       - run: |
+          ssh mila exit
+
+      - run: |
           set -e
           set -x
 
@@ -38,16 +41,11 @@ jobs:
           git config --global user.email "$GIT_MAIL"
           git config --global user.name "$GIT_NAME"
 
-          pip install -q virtualenv
-
           git clone git@github.com:ministry-of-silly-code/examples.git
           cd examples
 
-          export BUDDY_CURRENT_TESTING_BRANCH=${GITHUB_REF#refs/heads/}
-          sed -i -e "s|\.git.*\#egg|\.git\@$BUDDY_CURRENT_TESTING_BRANCH\#egg|" requirements.txt
-
-          virtualenv buddy_env
-          source ./buddy_env/bin/activate
-          pip install -q -r ./requirements.txt
-          python ./mnist_classifier.py
-          python ./mnist_classifier.py --host=mila
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          python mnist_classifier.py --host=mila
+          python mnist_classifier.py
