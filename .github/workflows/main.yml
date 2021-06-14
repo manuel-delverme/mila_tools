@@ -37,7 +37,6 @@ jobs:
           export TERM=xterm
           export WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}
 
-
           git config --global user.email "$GIT_MAIL"
           git config --global user.name "$GIT_NAME"
 
