@@ -47,5 +47,5 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install -r requirements.txt
-          python mnist_classifier.py --host=mila
-          python mnist_classifier.py
+          echo "GA-run-remote" | python mnist_classifier.py --host=mila
+          echo "GA-run-local" | python mnist_classifier.py
