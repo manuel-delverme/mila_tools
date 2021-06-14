@@ -28,15 +28,16 @@ jobs:
       - run: |
           set -e
           set -x
-          
+
           export GIT_MAIL=${{ secrets.GIT_MAIL }}
           export GIT_NAME=${{ secrets.GIT_NAME }}
           export TERM=xterm
           export WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}
-          
+
+
           git config --global user.email "$GIT_MAIL"
           git config --global user.name "$GIT_NAME"
-          
+
           pip install -q virtualenv
 
           git clone git@github.com:ministry-of-silly-code/examples.git
@@ -48,5 +49,5 @@ jobs:
           virtualenv buddy_env
           source ./buddy_env/bin/activate
           pip install -q -r ./requirements.txt
-          DEPLOY_DESTINATION=local python ./mnist_classifier.py
-          DEPLOY_DESTINATION=cluster python ./mnist_classifier.py
+          python ./mnist_classifier.py
+          python ./mnist_classifier.py --host=mila
