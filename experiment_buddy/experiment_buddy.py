@@ -141,6 +141,7 @@ class WandbWrapper:
 
     def plot(self, tag, values, global_step):
         wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
+        plt.close()
 
     def add_object(self, tag, obj, global_step):
         if not TORCH_ENABLED:
