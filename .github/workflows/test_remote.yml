@@ -1,4 +1,4 @@
-name: Single deploy test
+name: remote deploy test
 
 on:
   pull_request:

@@ -5,8 +5,8 @@ import os
 
 import aiohttp
 import fabric
-import invoke
 import git
+import invoke
 from funcy import log_durations
 
 
@@ -63,7 +63,7 @@ async def __remote_time_logger(elapsed: str):
     elapsed, function_name = re.search(r'([\d.]+).+in (\w+)', elapsed).groups()
 
     async with aiohttp.ClientSession() as session:
-        async with session.get(f'http://65.21.155.92/{function_name}/{elapsed}') as response:
+        async with session.get(f'http://static.92.155.21.65.clients.your-server.de/{function_name}/{elapsed}') as response:
             await response.text()
 
 
