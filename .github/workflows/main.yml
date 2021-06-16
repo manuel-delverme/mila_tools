@@ -1,0 +1,52 @@
+name: Single deploy test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test_pull_request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.GIT_SSH_KEY }}
+          name: id_rsa # optional
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          config: ${{ secrets.SSH_CONFIG }} # ssh_config; optional
+          if_key_exists: replace # replace / ignore / fail; optional (defaults to fail)
+      - run: |
+          ssh -vvv mila exit
+        name: ssh check
+
+      - run: |
+          set -e
+          set -x
+
+          export GIT_MAIL=${{ secrets.GIT_MAIL }}
+          export GIT_NAME=${{ secrets.GIT_NAME }}
+          export TERM=xterm
+          export WANDB_API_KEY=${{ secrets.WANDB_API_KEY }}
+
+          git config --global user.email "$GIT_MAIL"
+          git config --global user.name "$GIT_NAME"
+
+          git clone git@github.com:ministry-of-silly-code/examples.git
+          cd examples
+
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+          echo "GA-run-remote" | python mnist_classifier.py --host=mila
+          echo "GA-run-local" | python mnist_classifier.py

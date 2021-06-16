@@ -1,7 +1,15 @@
 #! /bin/bash
 
 set -e
+source /etc/profile
 
+log "running on $(hostname)"
+
+log "Refreshing modules..."
+module purge
+module load python/3.7
+
+log "Sourcing common"
 . $(dirname "$0")/common.sh
 
 GIT_URL=$1
@@ -10,14 +18,7 @@ HASH_COMMIT=$3
 
 load_git_folder $GIT_URL $HASH_COMMIT
 
-source /etc/profile
-log "Refreshing modules..."
-module purge
-module load python/3.7
-
 set_up_venv "venv"
-
-# sed -i '/torch.*/d' ./requirements.txt
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 
