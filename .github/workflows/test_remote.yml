@@ -46,4 +46,5 @@ jobs:
 
           cd examples_remote
           pip install -r requirements.txt
-          echo "GA-run-remote" | python mnist_classifier.py --host=mila
+          export BUDDY_HOST="mila"
+          echo "GA-run-remote" | python mnist_classifier.py
