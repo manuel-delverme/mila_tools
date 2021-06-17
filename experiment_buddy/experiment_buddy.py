@@ -177,7 +177,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
     project_name = get_project_name(git_repo)
 
     if local_run and sweep_yaml:
-        raise NotImplemented(
+        raise NotImplementedError(
             "Local sweeps are not supported."
             f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}"
             f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}"
