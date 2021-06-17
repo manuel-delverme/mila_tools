@@ -166,8 +166,8 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         wandb_kwargs = {}
 
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
-    is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
-    local_run = not host
+    running_on_cluster = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
+    local_run = not host and not running_on_cluster
 
     try:
         git_repo = git.Repo(search_parent_directories=True)
@@ -178,15 +178,15 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
 
     if local_run and sweep_yaml:
         raise NotImplementedError(
-            "Local sweeps are not supported."
-            f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}"
-            f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}"
+            "Local sweeps are not supported.\n"
+            f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}\n"
+            f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}\n"
         )
 
     wandb_kwargs = {'project': project_name, **wandb_kwargs}
     common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
 
-    if is_running_remotely:
+    if running_on_cluster:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
