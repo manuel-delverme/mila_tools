@@ -17,7 +17,8 @@ function pull_experiment() {
   HASH_COMMIT=$2
   FOLDER=$3
   log "downloading source code from $GIT_URL to $FOLDER"
-  git clone -q "$GIT_URL" "$FOLDER"/
+  # https://stackoverflow.com/questions/7772190/passing-ssh-options-to-git-clone/28527476#28527476
+  GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone "$GIT_URL" "$FOLDER"/
   cd "$FOLDER" || exit
   git checkout "$HASH_COMMIT"
   log "pwd is now $(pwd)"
