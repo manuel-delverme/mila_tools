@@ -20,8 +20,6 @@ from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
 
 import experiment_buddy.utils
-from experiment_buddy.utils import get_backend
-from experiment_buddy.utils import get_project_name
 
 try:
     import torch
@@ -174,7 +172,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
     except git.InvalidGitRepositoryError:
         raise ValueError(f"Could not find a git repo")
 
-    project_name = get_project_name(git_repo)
+    project_name = experiment_buddy.utils.get_project_name(git_repo)
 
     if local_run and sweep_yaml:
         raise NotImplementedError(
@@ -253,7 +251,7 @@ def _open_ssh_session(hostname: str) -> fabric.Connection:
 
     try:
         ssh_session = fabric.Connection(host=hostname, connect_timeout=10, forward_agent=True)
-        ssh_session.run("ssh -oStrictHostKeyChecking=no git@github.com", warn=True)  # in git we trust
+        ssh_session.run("", warn=True)  # in git we trust
     except SSHException as e:
         raise SSHException(
             "SSH connection failed!,"
@@ -268,7 +266,7 @@ def _ensure_scripts_directory(ssh_session: fabric.Connection, extra_slurm_header
     remote_tmp_folder = retr.stdout.strip() + "/"
     ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
 
-    scripts_dir = os.path.join(SCRIPTS_PATH, get_backend(ssh_session, working_dir).value)
+    scripts_dir = os.path.join(SCRIPTS_PATH, experiment_buddy.utils.get_backend(ssh_session, working_dir).value)
 
     for file in os.listdir(scripts_dir):
         if extra_slurm_header and file in ("run_sweep.sh", "srun_python.sh"):

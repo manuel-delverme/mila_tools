@@ -24,7 +24,8 @@ module load pytorch/1.7
 FOLDER=$SLURM_TMPDIR/src/
 
 log "downloading source code from $1 to $FOLDER"
-git clone $1 $FOLDER/
+# https://stackoverflow.com/questions/7772190/passing-ssh-options-to-git-clone/28527476#28527476
+GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone $1 $FOLDER/
 cd $FOLDER || exit
 git checkout $3
 log "pwd is now $(pwd)"
