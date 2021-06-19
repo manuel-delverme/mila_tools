@@ -20,8 +20,6 @@ from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
 
 import experiment_buddy.utils
-from experiment_buddy.utils import get_backend
-from experiment_buddy.utils import get_project_name
 
 try:
     import torch
@@ -141,6 +139,7 @@ class WandbWrapper:
 
     def plot(self, tag, values, global_step):
         wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
+        plt.close()
 
     def add_object(self, tag, obj, global_step):
         if not TORCH_ENABLED:
@@ -160,24 +159,27 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-@experiment_buddy.utils.telemetry
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="", disabled=False) -> WandbWrapper:
     if wandb_kwargs is None:
         wandb_kwargs = {}
 
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
-    is_running_remotely = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
-    local_run = not host
+    running_on_cluster = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
+    local_run = not host and not running_on_cluster
 
     try:
         git_repo = git.Repo(search_parent_directories=True)
     except git.InvalidGitRepositoryError:
         raise ValueError(f"Could not find a git repo")
 
-    project_name = get_project_name(git_repo)
+    project_name = experiment_buddy.utils.get_project_name(git_repo)
 
     if local_run and sweep_yaml:
-        raise NotImplemented("Local sweeps are not supported")
+        raise NotImplementedError(
+            "Local sweeps are not supported.\n"
+            f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}\n"
+            f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}\n"
+        )
 
     wandb_kwargs = {'project': project_name, **wandb_kwargs}
     common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
@@ -189,7 +191,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         wandb_kwargs["mode"] = "disabled"
         return WandbWrapper(f"buddy_disabled_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
 
-    if is_running_remotely:
+    if running_on_cluster:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
@@ -270,7 +272,7 @@ def _ensure_scripts_directory(ssh_session: fabric.Connection, extra_slurm_header
     remote_tmp_folder = retr.stdout.strip() + "/"
     ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
 
-    scripts_dir = os.path.join(SCRIPTS_PATH, get_backend(ssh_session, working_dir).value)
+    scripts_dir = os.path.join(SCRIPTS_PATH, experiment_buddy.utils.get_backend(ssh_session, working_dir).value)
 
     for file in os.listdir(scripts_dir):
         if extra_slurm_header and file in ("run_sweep.sh", "srun_python.sh"):
@@ -354,6 +356,11 @@ def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
 
 
 def git_sync(experiment_id, git_repo):
+    if any(url.lower().startswith('https://') for url in git_repo.remote('origin').urls):
+        raise Exception("Can't use HTTPS urls for your project, please, switch to GIT urls\n"
+                        "Look here for more infos https://docs.github.com/en/github/getting-started-with-github/"
+                        "getting-started-with-git/managing-remote-repositories#changing-a-remote-repositorys-url")
+
     active_branch = git_repo.active_branch.name
     try:
         subprocess.check_output(f"git checkout --detach", shell=True)  # move changest to snapshot branch

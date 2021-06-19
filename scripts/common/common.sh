@@ -39,8 +39,8 @@ function set_up_venv() {
   VENV_NAME=$1
 
   if ! source $HOME/venv/bin/activate; then
-    log "Setting up venv @ $HOME/venv..."
-    python3 -m virtualenv $HOME/"venv"
+    log "venv not found, setting up venv @ $HOME/venv..."
+    python3 -m venv $HOME/"venv"
     source $HOME/venv/bin/activate
   fi
 
