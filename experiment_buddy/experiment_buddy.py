@@ -251,7 +251,7 @@ def _open_ssh_session(hostname: str) -> fabric.Connection:
 
     try:
         ssh_session = fabric.Connection(host=hostname, connect_timeout=10, forward_agent=True)
-        ssh_session.run("", warn=True)  # in git we trust
+        ssh_session.run("")
     except SSHException as e:
         raise SSHException(
             "SSH connection failed!,"
