@@ -253,7 +253,7 @@ def _open_ssh_session(hostname: str) -> fabric.Connection:
 
     try:
         ssh_session = fabric.Connection(host=hostname, connect_timeout=10, forward_agent=True)
-        ssh_session.run("ssh git@github.com") # test for agent forwarding and ssh connection
+        ssh_session.run("ssh -oStrictHostKeyChecking=no git@github.com", warn=True)  # in git we trust
     except SSHException as e:
         raise SSHException(
             "SSH connection failed!,"
