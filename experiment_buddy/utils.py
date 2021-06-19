@@ -2,6 +2,7 @@ import asyncio
 import atexit
 import enum
 import os
+import subprocess
 
 import aiohttp
 import fabric
@@ -65,6 +66,12 @@ async def __remote_time_logger(elapsed: str):
     async with aiohttp.ClientSession() as session:
         async with session.get(f'http://static.92.155.21.65.clients.your-server.de/{function_name}/{elapsed}') as response:
             await response.text()
+
+
+def _get_job_info(jid):
+    result = subprocess.check_output(f"/opt/slurm/bin/sacct --brief -j {jid}".split()).decode()
+    jid, state, exit_code = result.split("\n")[2].split()
+    return state
 
 
 telemetry = log_durations(__remote_time_logger, unit='s')

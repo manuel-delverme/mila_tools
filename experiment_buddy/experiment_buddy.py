@@ -159,7 +159,7 @@ class WandbWrapper:
         self.run.watch(*args, **kwargs)
 
 
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="") -> WandbWrapper:
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="", disabled=False) -> WandbWrapper:
     if wandb_kwargs is None:
         wandb_kwargs = {}
 
@@ -183,6 +183,13 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
 
     wandb_kwargs = {'project': project_name, **wandb_kwargs}
     common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
+    dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+
+    if disabled:
+        experiment_id = "DISABLED"
+        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
+        wandb_kwargs["mode"] = "disabled"
+        return WandbWrapper(f"buddy_disabled_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
 
     if running_on_cluster:
         print("using wandb")
@@ -192,7 +199,6 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         # TODO: turn into a big switch based on scheduler
         return WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
 
-    dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
     if debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)

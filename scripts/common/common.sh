@@ -4,7 +4,7 @@ set -e
 
 # Module system
 function log() {
-    echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
+  echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
 }
 
 function pull_experiment() {
@@ -47,5 +47,5 @@ function set_up_venv() {
   log "Using shared venv @ $HOME/venv"
 
   python3 -m pip install --upgrade pip
-  python3 -m pip install -r "requirements.txt" --exists-action w | grep -v "Requirement already satisfied"
+  python3 -m pip install --upgrade -r "requirements.txt" --exists-action w | grep -v "Requirement already satisfied"
 }
