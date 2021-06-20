@@ -1,8 +1,3 @@
-`mila_tools` aims to reduce the overhead to deploy experiments on mila clusters.
-
-## How to develop
-Quick start
-
 `experiment_buddy` aims to reduce the overhead to deploy experiments on servers.
 
 buddy is a work in progress, if you are intrerested in using it in your workflow, ping me in slack @delvermm
@@ -19,30 +14,35 @@ Right now its responsibilities cover:
 
 Example: (Updated)
 
-### Usage
+# Quick start
 
-#### Local
+# To run your code locally
+
+Start by forking the example repo https://github.com/ministry-of-silly-code/examples
 
 ```shell
-# 1 - Clone [or create] your project, in this case I'm using a basic mnist_classifier 
-git clone https://github.com/ministry-of-silly-code/examples.git
-cd examples
+# 1 - Create a new virtual env
+python3 -m venv venv
+source ./venv/bin/activate
 
-# 2 - Create a new virtual env
-python3 -m venv buddy-env
-source ./buddy-env/bin/activate
+# 2 - Clone [or create] your project, in this case I'm using a basic mnist_classifier 
+git clone https://github.com/[your-username]/examples.git
+cd examples
 
 # 3 - Install Buddy
 # (and add it to you your requirements.txt if you are not using the given examples)
 pip install -e git+https://github.com/ministry-of-silly-code/experiment_buddy.git#egg=experiment_buddy
 
+pip install --upgrade -r requirements.txt
+
 # Run your experiments
 python ./mnist_classifier.py
 ```
 
-#### Cluster
-Same as the local one, but you have to add to your `~/.ssh/config` the following configuration 
+#### Run an experiment remotely
+We need to tell buddy where to deploy the experiments, first add to the file `~/.ssh/config` the following configuration:
 
+For Mila users:
 ```shell
 ##   Mila
 Host mila1   login-1.login.server.mila.quebec
@@ -65,15 +65,15 @@ Match host *.mila.quebec,*.umontreal.ca
     ServerAliveInterval 120
     ServerAliveCountMax 5
 ```
+Thanks to [obilaniu](https://github.com/obilaniu) for the config.
 
-And you need to have your cluster private key enabled
-
-How create and add your SSH keys can be found [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account) 
+You now need to setup the cluster SSH key. how create and add your SSH keys can be found [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account) 
 
 1. Add cluster public-key to: `https://github.com/settings/keys` if you don't know this yet, check this out [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account)
 1. `pip install wandb && wandb init` there are two ways to set up wandb: 
     - set up wandb init from the cmd
     - or set export  WANDB_API_KEY = your wandb key which can be found here: https://wandb.ai/settings
+1. Set the host parameter [here](https://github.com/ministry-of-silly-code/examples/blob/master/config.py#L28) to the ssh hostname you want to deploy to .e.g. "mila"
 1. `python main.py`
 
 More details on experiment-buddy:
