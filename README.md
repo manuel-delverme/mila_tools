@@ -42,7 +42,7 @@ python ./mnist_classifier.py
 #### Run an experiment remotely
 We need to tell buddy where to deploy the experiments, first add to the file `~/.ssh/config` the following configuration:
 
-For Mila users:
+For Mila users (replace $MILA_USER with your username)
 ```shell
 ##   Mila
 Host mila1   login-1.login.server.mila.quebec
