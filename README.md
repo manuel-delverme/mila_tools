@@ -70,7 +70,7 @@ And you need to have your cluster private key enabled
 
 How create and add your SSH keys can be found [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account) 
 
-1. Add cluster private-key to: `https://github.com/settings/keys` if you don't know this yet, check this out [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account)
+1. Add cluster public-key to: `https://github.com/settings/keys` if you don't know this yet, check this out [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account)
 1. `pip install wandb && wandb init` there are two ways to set up wandb: 
     - set up wandb init from the cmd
     - or set export  WANDB_API_KEY = your wandb key which can be found here: https://wandb.ai/settings

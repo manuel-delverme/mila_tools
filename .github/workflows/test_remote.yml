@@ -39,7 +39,8 @@ jobs:
           git config --global user.email "$GIT_MAIL"
           git config --global user.name "$GIT_NAME"
 
-          git clone git@github.com:ministry-of-silly-code/examples.git examples_remote
+          # https://stackoverflow.com/questions/7772190/passing-ssh-options-to-git-clone/28527476#28527476
+          GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone git@github.com:ministry-of-silly-code/examples.git examples_remote
 
           python3 -m venv venv
           source venv/bin/activate
@@ -47,4 +48,5 @@ jobs:
           cd examples_remote
           pip install -r requirements.txt
           export BUDDY_HOST="mila"
+          eval `ssh-agent -s`
           echo "GA-run-remote" | python mnist_classifier.py
