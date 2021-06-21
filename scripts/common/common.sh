@@ -12,7 +12,7 @@ function pull_experiment() {
   HASH_COMMIT=$2
   FOLDER=$3
   log "downloading source code from $GIT_URL to $FOLDER"
-  git clone -q "$GIT_URL" "$FOLDER"/
+  git clone "$GIT_URL" "$FOLDER"/
   cd "$FOLDER" || exit
   git checkout "$HASH_COMMIT"
   log "pwd is now $(pwd)"
