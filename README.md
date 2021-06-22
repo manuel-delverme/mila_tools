@@ -1,5 +1,7 @@
 `experiment_buddy` aims to reduce the overhead to deploy experiments on servers.
 
+Aims to reducing the cognitive load of running experiments remotely: with minimal changes it removes the need to think about experiment deployment for common use cases.
+
 buddy is a work in progress, if you are intrerested in using it in your workflow, ping me in slack @delvermm
 
 It's important to reduce cognitive overload for the researcher, as measured in seconds-to-first-tensorboard-datapoint.
@@ -66,6 +68,8 @@ Match host *.mila.quebec,*.umontreal.ca
     ServerAliveCountMax 5
 ```
 Thanks to [obilaniu](https://github.com/obilaniu) for the config.
+
+Make sure you can successfully login with `ssh mila`. 
 
 You now need to setup the cluster SSH key. how create and add your SSH keys can be found [here](https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/adding-a-new-ssh-key-to-your-github-account) 
 
