@@ -38,6 +38,8 @@ def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> 
 def get_project_name(git_repo: git.Repo) -> str:
     git_repo_remotes = git_repo.remotes
     assert isinstance(git_repo_remotes, list)
+    if not len(git_repo_remotes):
+        raise Exception("No remote url found, have you pushed the new repo?")
     remote_url = git_repo_remotes[0].config_reader.get("url")
     project_name, _ = os.path.splitext(os.path.basename(remote_url))
     return project_name

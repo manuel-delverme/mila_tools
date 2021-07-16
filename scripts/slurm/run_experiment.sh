@@ -41,21 +41,6 @@ function load_git_folder() {
   pull_experiment $GIT_URL $HASH_COMMIT $EXPERIMENT_FOLDER
 }
 
-function set_up_venv() {
-  VENV_NAME=$1
-
-  if ! source $HOME/venv/bin/activate; then
-    log "venv not found, setting up venv @ $HOME/venv..."
-    python3 -m venv $HOME/"venv"
-    source $HOME/venv/bin/activate
-  fi
-
-  log "Using shared venv @ $HOME/venv"
-
-  python3 -m pip install --upgrade pip
-  python3 -m pip install -r "requirements.txt" --exists-action w | grep -v "Requirement already satisfied"
-}
-
 log "running on $(hostname)"
 
 GIT_URL=$1
@@ -63,7 +48,17 @@ ENTRYPOINT=$2
 HASH_COMMIT=$3
 
 load_git_folder $GIT_URL $HASH_COMMIT
-set_up_venv "venv"
+
+if ! source $HOME/venv/bin/activate; then
+  log "venv not found, setting up venv @ $HOME/venv..."
+  python3 -m venv $HOME/"venv"
+  source $HOME/venv/bin/activate
+fi
+
+log "Using shared venv @ $HOME/venv"
+
+python3 -m pip install --upgrade pip
+python3 -m pip install -r "requirements.txt" --exists-action w | grep -v "Requirement already satisfied"
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 
