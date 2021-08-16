@@ -19,7 +19,7 @@ setup(
     version='0.0.1',
     packages=["experiment_buddy", "scripts"],
     package_data={'scripts': ['*/*.sh']},
-    url='github.com/ministry-of-silly-code/experiment_buddy/',
+    url='https://github.com/ministry-of-silly-code/experiment_buddy/',
     license='',
     author='Manuel Del Verme, Ionelia Buzatu',
     maintainer='Ionelia Buzatu',
