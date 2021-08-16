@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import types
+import warnings
 
 import cloudpickle
 import fabric
@@ -42,6 +43,11 @@ DEFAULT_WANDB_KEY = os.path.join(os.environ["HOME"], ".netrc")
 
 
 def register(config_params):
+    warnings.warn("Use register_defaults() instead")
+    return register_defaults(config_params)
+
+
+def register_defaults(config_params):
     global hyperparams
     # TODO: fails on nested config object
     if hyperparams is not None:
