@@ -9,6 +9,7 @@ import types
 import warnings
 
 import cloudpickle
+import experiment_buddy.utils
 import fabric
 import git
 import matplotlib.pyplot as plt
@@ -19,8 +20,6 @@ import wandb.cli
 import yaml
 from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
-
-import experiment_buddy.utils
 
 try:
     import torch
@@ -52,6 +51,9 @@ def register_defaults(config_params):
     # TODO: fails on nested config object
     if hyperparams is not None:
         raise RuntimeError("refusing to overwrite registered parameters")
+
+    if isinstance(config_params, argparse.Namespace):
+        raise Exception("Need a dict, use var() or locals()")
 
     parser = argparse.ArgumentParser()
     parser.add_argument('_ignored', nargs='*')
@@ -164,6 +166,8 @@ class WandbWrapper:
     def watch(self, *args, **kwargs):
         self.run.watch(*args, **kwargs)
 
+    def close(self):
+        pass
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="", disabled=False) -> WandbWrapper:
     if wandb_kwargs is None:
