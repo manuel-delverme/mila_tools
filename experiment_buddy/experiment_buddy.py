@@ -169,6 +169,7 @@ class WandbWrapper:
     def close(self):
         pass
 
+
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="", disabled=False) -> WandbWrapper:
     if wandb_kwargs is None:
         wandb_kwargs = {}
