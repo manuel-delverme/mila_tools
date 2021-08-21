@@ -29,7 +29,8 @@ def setup_ssh():
         wrong_username = True
         while wrong_username:
             mila_username = input("What is your mila username?")
-            wrong_username = enforce_answer_list(f"Your cluster username is: {mila_username}, correct?", ["y", "n"]) == "n"
+            wrong_username = enforce_answer_list(f"Your cluster username is: {mila_username}, correct?",
+                                                 ["y", "n"]) == "n"
 
         with open(config_file, 'a') as fout:
             fout.write(
@@ -37,10 +38,18 @@ def setup_ssh():
                 "    Hostname         login.server.mila.quebec\n"
                 "    Port 2222\n"
                 f"    User {mila_username}\n"
-                "    PreferredAuthentications publickey\n"
+                "    PreferredAuthentications publickey,keyboard-interactive\n"
                 "    Port 2222\n"
                 "    ServerAliveInterval 120\n"
                 "    ServerAliveCountMax 5\n\n")
+
+    if not os.path.exists("~/.ssh/id_rsa.pub"):
+        logger.info("Keys not found. Generate keys:")
+        retr = subprocess.run("ssh-keygen", shell=True)
+        logger.info(retr.stdout)
+        logger.info("Copy key pair to your account.")
+        retr = subprocess.run("ssh-copy-id mila", shell=True)
+        logger.info(retr.stdout)
 
     try:
         logger.info("Checking cluster connection...")
@@ -101,6 +110,7 @@ def setup_github():
     if retr.exited != 0:
         raise Exception("Failed to generate ssh keys. Check your ~/.ssh/id_rsa.")
     if retr.stdout.startswith("ssh-rsa"):
-        logger.info("Navigate to https://github.com/settings/ssh/new and add your cluster public key, to allow the cluster access to private repositories")
+        logger.info(
+            "Navigate to https://github.com/settings/ssh/new and add your cluster public key, to allow the cluster access to private repositories")
         logger.info("Give it a title such as \"Mila cluster\". The key is:")
         print(retr.stdout.strip())
