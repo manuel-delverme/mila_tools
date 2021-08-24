@@ -9,7 +9,6 @@ import types
 import warnings
 
 import cloudpickle
-import experiment_buddy.utils
 import fabric
 import git
 import matplotlib.pyplot as plt
@@ -20,6 +19,8 @@ import wandb.cli
 import yaml
 from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
+
+import experiment_buddy.utils
 
 try:
     import torch
@@ -171,6 +172,7 @@ class WandbWrapper:
 
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="", disabled=False) -> WandbWrapper:
+    extra_slurm_headers = extra_slurm_headers.strip()
     if wandb_kwargs is None:
         wandb_kwargs = {}
 
