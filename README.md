@@ -73,7 +73,7 @@ Run your code:
 python main.py
 ```
 ## Git connection refused
-If the ssh-agent is unable to connect to git, add, make sure ssh keys are present in the current ssh-agent:
+If the ssh-agent is unable to connect to git, add the ssh-keys to the current ssh-agent:
 ```bash
 eval `ssh-agent -s`
 ssh-add
