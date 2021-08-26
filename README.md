@@ -62,3 +62,19 @@ python ./mnist_classifier.py
 More details on experiment-buddy:
 1. experiment-buddy will add tagged commits to a dangling branch 
 2. Supports: Unix based OS
+
+# To run your code on the cluster (Mila users)
+Set host as `mila`:
+```python
+experiment_buddy.deploy(host='mila')
+```
+Run your code:
+```shell
+python main.py
+```
+## Git connection refused
+If the ssh-agent is unable to connect to git, add, make sure ssh keys are present in the current ssh-agent:
+```bash
+eval `ssh-agent -s`
+ssh-add
+```
