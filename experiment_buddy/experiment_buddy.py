@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import types
+import typing
 import warnings
 
 import cloudpickle
@@ -64,6 +65,9 @@ def register_defaults(config_params):
             raise NameError(f"{wandb_escape} is a reserved prefix")
         if _is_valid_hyperparam(k, v):
             parser.add_argument(f"--{k}", f"--^{k}", type=type(v), default=v)
+            if "_" in k:
+                k = k.replace("_", "-")
+                parser.add_argument(f"--{k}", f"--^{k}", type=type(v), default=v)
 
     parsed = parser.parse_args()
 
@@ -171,11 +175,19 @@ class WandbWrapper:
         pass
 
 
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None, extra_slurm_headers="", disabled=False) -> WandbWrapper:
-    extra_slurm_headers = extra_slurm_headers.strip()
+def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None,
+           extra_slurm_headers="", extra_modules=None, disabled=False) -> WandbWrapper:
     if wandb_kwargs is None:
         wandb_kwargs = {}
+    if extra_modules is None:
+        extra_modules = [
+            "module load python/3.7",
+            "module load pytorch/1.7",
+        ]
+    if not any("python" in m for m in extra_modules):
+        warnings.warn("No python module found, are you sure?")
 
+    extra_slurm_headers = extra_slurm_headers.strip()
     debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     running_on_cluster = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not host and not running_on_cluster
@@ -199,37 +211,31 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
 
     if disabled:
-        experiment_id = "DISABLED"
-        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
+        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard", "DISABLED", dtm)
         wandb_kwargs["mode"] = "disabled"
-        return WandbWrapper(f"buddy_disabled_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
-
-    if running_on_cluster:
+        logger = WandbWrapper(f"buddy_disabled_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+    elif running_on_cluster:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         jid += os.environ.get("SLURM_JOB_ID", "")
         # TODO: turn into a big switch based on scheduler
-        return WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
-
-    if debug:
+        logger = WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
+    elif debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
-
-    experiment_id = _ask_experiment_id(host, sweep_yaml)
-    print(f"experiment_id: {experiment_id}")
-    if local_run:
-        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+        logger = WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
     else:
-        if experiment_id.endswith("!!"):
-            extra_slurm_headers += "\n#SBATCH --partition=unkillable"
-        elif experiment_id.endswith("!"):
-            extra_slurm_headers += "\n#SBATCH --partition=main"
+        experiment_id = _ask_experiment_id(host, sweep_yaml)
+        print(f"experiment_id: {experiment_id}")
+        if local_run:
+            tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
+            return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+        else:
+            _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers, wandb_kwargs, extra_modules)
+            sys.exit()
 
-        _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers, wandb_kwargs)
-        sys.exit()
+    return logger
 
 
 def _ask_experiment_id(cluster, sweep):
@@ -264,10 +270,6 @@ def _setup_tb(logdir):
 
 
 def _open_ssh_session(hostname: str) -> fabric.Connection:
-    """ TODO: move this to utils.py or to a class (better)
-        TODO add time-out for unknown host
-     """
-
     try:
         ssh_session = fabric.Connection(host=hostname, connect_timeout=10, forward_agent=True)
         ssh_session.run("")
@@ -324,7 +326,13 @@ def log_cmd(cmd, retr):
 
 
 def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_repo: git.Repo, project_name: str,
-                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict):
+                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict, extra_modules=typing.List[str]):
+    if experiment_id.endswith("!!"):
+        extra_slurm_header += "\n#SBATCH --partition=unkillable"
+    elif experiment_id.endswith("!"):
+        extra_slurm_header += "\n#SBATCH --partition=main"
+    extra_modules = "@".join(extra_modules)
+
     ssh_session = _open_ssh_session(hostname)
     scripts_folder = _ensure_scripts_directory(ssh_session, extra_slurm_header, git_repo.working_dir)
     hash_commit = git_sync(experiment_id, git_repo)
@@ -335,9 +343,9 @@ def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_
     entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
     if sweep_yaml:
         sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_yaml, wandb_kwargs)
-        ssh_command = f"/opt/slurm/bin/sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit}"
+        ssh_command = f"/opt/slurm/bin/sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
     else:
-        ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit}"
+        ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
         print("monitor your run on https://wandb.ai/")
 
     print(ssh_command)

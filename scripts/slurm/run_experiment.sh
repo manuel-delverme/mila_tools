@@ -6,11 +6,9 @@ source /etc/profile
 # Module system
 function log() {
   echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
+  echo -e "[DEPLOY LOG] $*" >> $HOME/last_buddy_run_experiment_log.txt
 }
 
-log "Refreshing modules..."
-module purge
-module load python/3.7
 
 function pull_experiment() {
   GIT_URL=$1
@@ -42,10 +40,19 @@ function load_git_folder() {
 }
 
 log "running on $(hostname)"
-
 GIT_URL=$1
 ENTRYPOINT=$2
 HASH_COMMIT=$3
+EXTRA_MODULES=$(echo $4 | tr "@" " ")
+
+module purge
+log "Refreshing modules..."
+log "EXTRA_MODULES=$EXTRA_MODULES"
+for MODULE in $EXTRA_MODULES
+do
+	log "module load $MODULE"
+	module load $MODULE
+done
 
 load_git_folder $GIT_URL $HASH_COMMIT
 
@@ -57,8 +64,11 @@ fi
 
 log "Using shared venv @ $HOME/venv"
 
+log "Upgrading pip"
 python3 -m pip install --upgrade pip
+log "Upgrading requirements"
 python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
+log "Requirements upgraded"
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 
