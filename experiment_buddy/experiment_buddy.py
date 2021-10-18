@@ -181,8 +181,8 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         wandb_kwargs = {}
     if extra_modules is None:
         extra_modules = [
-            "module load python/3.7",
-            "module load pytorch/1.7",
+            "python/3.7",
+            "pytorch/1.7",
         ]
     if not any("python" in m for m in extra_modules):
         warnings.warn("No python module found, are you sure?")
