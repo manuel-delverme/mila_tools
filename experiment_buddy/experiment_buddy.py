@@ -158,14 +158,14 @@ class WandbWrapper:
         if not TORCH_ENABLED:
             raise NotImplementedError
 
-        local_path = os.path.join(self.objects_path, f"{tag}-{global_step}.pt")
+        local_path = os.path.join(self.run.dir, f"{tag}-{global_step}.pt")
         with open(local_path, "wb") as fout:
             try:
                 torch.save(obj, fout, pickle_module=cloudpickle)
             except Exception as e:
                 raise e
 
-        self.run.save(local_path, base_path=self.objects_path)
+        self.run.save(local_path, base_path=self.run.dir)
         return local_path
 
     def watch(self, *args, **kwargs):
