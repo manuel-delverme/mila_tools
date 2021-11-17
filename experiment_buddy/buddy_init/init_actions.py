@@ -39,11 +39,10 @@ def setup_ssh():
                 "    Port 2222\n"
                 f"    User {mila_username}\n"
                 "    PreferredAuthentications publickey,keyboard-interactive\n"
-                "    Port 2222\n"
                 "    ServerAliveInterval 120\n"
                 "    ServerAliveCountMax 5\n\n")
 
-    if not os.path.exists("~/.ssh/id_rsa.pub"):
+    if not os.path.exists(os.path.expanduser("~/.ssh/id_rsa.pub")):
         logger.info("Keys not found. Generate keys:")
         retr = subprocess.run("ssh-keygen", shell=True)
         logger.info(retr.stdout)
@@ -57,13 +56,14 @@ def setup_ssh():
             mila_username = connection.ssh_config.get('user')
             connection.run("")
         logger.info(f"SSH for user: {mila_username} \u2713.")
-    except paramiko.ssh_exception.SSHException:
+    except paramiko.ssh_exception.SSHException as e:
         raise Exception(f"""
 Error while checking SSH connection, stopping
  - Double check that your username is '{mila_username}'?
  - Can you successfully connect as "ssh mila"?
  - Setup the public and private key for you and the mila cluster?
-""")
+Raised Exception:
+""" + str(e))
 
 
 def setup_wandb():
