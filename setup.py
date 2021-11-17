@@ -21,10 +21,10 @@ setup(
     package_data={'scripts': ['*/*.sh']},
     url='https://github.com/ministry-of-silly-code/experiment_buddy/',
     license='',
-    author='Manuel Del Verme, Ionelia Buzatu',
-    maintainer='Ionelia Buzatu',
+    author='Manuel Del Verme, Ionelia Buzatu, Simone Totaro',
+    maintainer='Manuel Del Verme',
     author_email='',
     description='',
     install_requires=install_requires,
-    entry_points={"console_scripts": ["buddy-init=buddy_init.init_project:sys_main"]}
+    entry_points={"console_scripts": ["buddy-init=experiment_buddy.buddy_init.init_project:sys_main"]}
 )

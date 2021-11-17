@@ -2,7 +2,7 @@ import logging
 import shutil
 import sys
 
-import buddy_init.init_actions
+import experiment_buddy.buddy_init.init_actions
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +18,9 @@ def preflight_check():
 
 def init():
     preflight_check()
-    buddy_init.init_actions.setup_ssh()
-    buddy_init.init_actions.setup_wandb()
-    buddy_init.init_actions.setup_github()
+    experiment_buddy.buddy_init.init_actions.setup_ssh()
+    experiment_buddy.buddy_init.init_actions.setup_wandb()
+    experiment_buddy.buddy_init.init_actions.setup_github()
     logger.info("experiment buddy is all set and ready to help.")
 
 
