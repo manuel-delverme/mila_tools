@@ -11,7 +11,6 @@ install_requires = [
     'paramiko',
     'tqdm',
     'aiohttp',
-    'funcy',
 ]
 
 setup(
