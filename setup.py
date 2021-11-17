@@ -16,7 +16,7 @@ install_requires = [
 
 setup(
     name='experiment_buddy',
-    version='0.0.4',
+    version='0.0.5',
     packages=["experiment_buddy", "scripts"],
     package_data={'scripts': ['*/*.sh']},
     url='https://github.com/ministry-of-silly-code/experiment_buddy/',
