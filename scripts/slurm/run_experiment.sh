@@ -2,6 +2,7 @@
 
 set -e
 source /etc/profile
+echo "Using $SHELL as shell"
 
 # Module system
 function log() {
