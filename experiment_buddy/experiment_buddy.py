@@ -130,6 +130,9 @@ class WandbWrapper:
             register_param(k, v)
 
     def add_scalar(self, tag: str, scalar_value: float, global_step: int):
+        if scalar_value != scalar_value:
+            warnings.warn(f"{tag} is {scalar_value} at {global_step} :(")
+
         scalar_value = float(scalar_value)  # silently remove extra data such as torch gradients
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
         if self.tensorboard:
