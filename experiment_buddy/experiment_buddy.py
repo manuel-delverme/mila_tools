@@ -148,6 +148,9 @@ class WandbWrapper:
 
     @staticmethod
     def add_histogram(tag, values, global_step):
+        if len(values) <= 2:
+            raise ValueError("histogram requires at least 3 values")
+
         if isinstance(values, (tuple, list)) and len(values) == 2:
             wandb.log({tag: wandb.Histogram(np_histogram=values)}, step=global_step, commit=False)
         else:
