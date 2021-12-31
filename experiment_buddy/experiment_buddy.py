@@ -232,6 +232,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         logger = WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
     else:
+        ensure_torch_compatibility()
         experiment_id = _ask_experiment_id(host, sweep_yaml)
         print(f"experiment_id: {experiment_id}")
         if local_run:
@@ -242,6 +243,15 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
             sys.exit()
 
     return logger
+
+
+def ensure_torch_compatibility():
+    with open("requirements.txt") as fin:
+        reqs = fin.read()
+        # torch, vision or audio.
+        if "torch" not in reqs and "torch==1.7.1+cu110" not in reqs:
+            # https://mila-umontreal.slack.com/archives/CFAS8455H/p1624292393273100?thread_ts=1624290747.269100&cid=CFAS8455H
+            warnings.warn("""torch rocm4.2 version will be installed on the cluster which is not supported specify torch==1.7.1+cu110 in requirements.txt instead""")
 
 
 def _ask_experiment_id(cluster, sweep):
