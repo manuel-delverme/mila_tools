@@ -8,6 +8,7 @@ import time
 import types
 import typing
 import warnings
+from typing import Dict
 
 import cloudpickle
 import fabric
@@ -137,6 +138,10 @@ class WandbWrapper:
         self.run.log({tag: scalar_value}, step=global_step, commit=False)
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
+
+    def add_scalars(self, scalars: Dict[str, float], global_step: int):
+        for k, v in scalars.items():
+            self.add_scalar(k, v, global_step)
 
     def add_figure(self, tag, figure, global_step, close=True):
         self.run.log({tag: figure}, global_step)
