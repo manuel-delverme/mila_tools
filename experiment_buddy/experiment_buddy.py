@@ -251,6 +251,9 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
 
 
 def ensure_torch_compatibility():
+    if not os.path.exists("requirements.txt"):
+        return
+
     with open("requirements.txt") as fin:
         reqs = fin.read()
         # torch, vision or audio.
