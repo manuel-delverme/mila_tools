@@ -139,8 +139,8 @@ class WandbWrapper:
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
-    def add_scalars(self, scalars: Dict[str, float], global_step: int, prefix: str = ""):
-        for k, v in scalars.items():
+    def add_scalars(self, dict_of_scalars: Dict[str, float], global_step: int, prefix: str = ""):
+        for k, v in dict_of_scalars.items():
             self.add_scalar(prefix + k, v, global_step)
 
     def add_figure(self, tag, figure, global_step, close=True):
