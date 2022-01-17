@@ -2,6 +2,8 @@ import argparse
 import datetime
 import logging
 import os
+import random
+import socket
 import subprocess
 import sys
 import time
@@ -14,6 +16,7 @@ import cloudpickle
 import fabric
 import git
 import matplotlib.pyplot as plt
+import requests
 import tensorboardX
 import tqdm
 import wandb
@@ -187,7 +190,7 @@ class WandbWrapper:
 
 
 def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None,
-           extra_slurm_headers="", extra_modules=None, disabled=False) -> WandbWrapper:
+           extra_slurm_headers="", extra_modules=None, disabled=False, interactive=False, run_per_agent=None) -> WandbWrapper:
     if wandb_kwargs is None:
         wandb_kwargs = {}
     if extra_modules is None:
@@ -216,6 +219,8 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
             f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}\n"
             f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}\n"
         )
+    if (local_run or sweep_yaml) and interactive:
+        raise NotImplementedError("Remote debugging requires a remote host and no sweep")
 
     wandb_kwargs = {'project': project_name, **wandb_kwargs}
     common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
@@ -226,13 +231,19 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         wandb_kwargs["mode"] = "disabled"
         logger = WandbWrapper(f"buddy_disabled_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
     elif running_on_cluster:
-        print("using wandb")
-        experiment_id = f"{git_repo.head.commit.message.strip()}"
-        jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
-        jid += os.environ.get("SLURM_JOB_ID", "")
-        # TODO: turn into a big switch based on scheduler
-        logger = WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
-    elif debug:
+        if interactive:
+            with open("~/buddy_remote_debugger", "r") as fin:
+                debugger_ip, debugger_port = fin.read().split(":")
+            import pydevd_pycharm
+            pydevd_pycharm.settrace(debugger_ip, port=debugger_port, stdoutToServer=True, stderrToServer=True)
+        else:
+            print("using wandb")
+            experiment_id = f"{git_repo.head.commit.message.strip()}"
+            jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+            jid += os.environ.get("SLURM_JOB_ID", "")
+            # TODO: turn into a big switch based on scheduler
+            logger = WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
+    elif debug and not interactive:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         logger = WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
@@ -244,7 +255,8 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
             tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
             return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
         else:
-            _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers, wandb_kwargs, extra_modules)
+            _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers,
+                                wandb_kwargs, extra_modules, interactive, run_per_agent)
             sys.exit()
 
     return logger
@@ -350,32 +362,70 @@ def log_cmd(cmd, retr):
 
 
 def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_repo: git.Repo, project_name: str,
-                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict, extra_modules=typing.List[str]):
+                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict, extra_modules=typing.List[str], interactive=False, count_per_agent=None):
+    entrypoint, extra_modules, git_url, hash_commit, scripts_folder, ssh_session = commit(
+        experiment_id, extra_modules, extra_slurm_header, git_repo, hostname)
+
+    if interactive:
+        allocate_interactive(entrypoint, experiment_id, extra_modules, git_url, hash_commit,
+                             project_name, scripts_folder, ssh_session, wandb_kwargs)
+    else:
+        send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, extra_slurm_header,
+                  proc_num, project_name, scripts_folder, ssh_session, sweep_yaml, wandb_kwargs, count_per_agent)
+
+
+def allocate_interactive(entrypoint, experiment_id, extra_modules, git_url, hash_commit,
+                         project_name, scripts_folder, ssh_session, wandb_kwargs):
+    raise NotImplemented
+    # ssh_session.run("/opt/slurm/bin/salloc --gres=gpu:1 -t 12:00:00 --partition=unkillable", pty=True, asynchronous=True)
+
+    # Send to inputfile:
+
+    # assume it's the latest pycharm version
+    # venv is not created by default shoudl be buddy-env ?
+    ssh_session.run(f"source $HOME/venv/bin/activate && pip install --upgrade pydevd-pycharm", pty=True)
+
+    # On the cluster add the following to the source file:
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    local_ip = requests.get("https://api.ipify.org/?format=raw").text
+    local_port = random.randint(10000, 60000)
+    ssh_session.run(f"echo {local_ip}:{local_port} > ~/buddy_remote_debugger", pty=True)
+
+    # ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
+
+    print(ssh_command)
+
+
+def send_jobs(
+        entrypoint, experiment_id, extra_modules, git_url, hash_commit, extra_slurm_header,
+        proc_num, project_name, scripts_folder, ssh_session, sweep_yaml, wandb_kwargs, count_per_agent):
+
+    if sweep_yaml:
+        sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_yaml, wandb_kwargs)
+        ssh_command = f"/opt/slurm/bin/sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules} {count_per_agent}"
+    else:
+        ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
+        print("monitor your run on https://wandb.ai/")
+    print(ssh_command)
+    for _ in tqdm.trange(proc_num):
+        time.sleep(1)
+        ssh_session.run(ssh_command)
+
+
+def commit(experiment_id, extra_modules, extra_slurm_header, git_repo, hostname):
     if experiment_id.endswith("!!"):
         extra_slurm_header += "\n#SBATCH --partition=unkillable"
     elif experiment_id.endswith("!"):
         extra_slurm_header += "\n#SBATCH --partition=main"
     extra_modules = "@".join(extra_modules)
-
     ssh_session = _open_ssh_session(hostname)
     scripts_folder = _ensure_scripts_directory(ssh_session, extra_slurm_header, git_repo.working_dir)
     hash_commit = git_sync(experiment_id, git_repo)
-
     _check_or_copy_wandb_key(ssh_session)
-
     git_url = git_repo.remotes[0].url
     entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
-    if sweep_yaml:
-        sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_yaml, wandb_kwargs)
-        ssh_command = f"/opt/slurm/bin/sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
-    else:
-        ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
-        print("monitor your run on https://wandb.ai/")
-
-    print(ssh_command)
-    for _ in tqdm.trange(proc_num):
-        time.sleep(1)
-        ssh_session.run(ssh_command)
+    return entrypoint, extra_modules, git_url, hash_commit, scripts_folder, ssh_session
 
 
 def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
