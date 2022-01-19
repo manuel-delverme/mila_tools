@@ -8,9 +8,8 @@ import subprocess
 import sys
 import time
 import types
-import typing
 import warnings
-from typing import Dict
+from typing import Dict, Union, List
 
 import cloudpickle
 import fabric
@@ -189,8 +188,20 @@ class WandbWrapper:
         pass
 
 
-def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs=None,
+def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: int = 1, wandb_kwargs=None,
            extra_slurm_headers="", extra_modules=None, disabled=False, interactive=False, run_per_agent=None) -> WandbWrapper:
+    """
+    :param host: The host to deploy to.
+    :param sweep_definition: Either a yaml file or a string containing the sweep id to resume from
+    :param proc_num: The number of parallel jobs to run.
+    :param wandb_kwargs: Kwargs to pass to wandb.init
+    :param extra_slurm_headers: Extra slurm headers to add to the job script
+    :param extra_modules: Extra modules to module load
+    :param disabled: If true does not run jobs in the cluster and invokes wandb.init with disabled=True.
+    :param interactive: Not yet implemented.
+    :param run_per_agent: If set to a number, each agent will run `run_per_agent` experiments and then exit.
+    :return: A tensorboard-like object that can be used to log data.
+    """
     if wandb_kwargs is None:
         wandb_kwargs = {}
     if extra_modules is None:
@@ -204,7 +215,7 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         raise NotImplementedError("Not implemented yet")
 
     extra_slurm_headers = extra_slurm_headers.strip()
-    debug = '_pydev_bundle.pydev_log' in sys.modules.keys() and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
+    debug = sys.gettrace() is not None and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     running_on_cluster = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not host and not running_on_cluster
 
@@ -215,13 +226,13 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
 
     project_name = experiment_buddy.utils.get_project_name(git_repo)
 
-    if local_run and sweep_yaml:
+    if local_run and sweep_definition:
         raise NotImplementedError(
             "Local sweeps are not supported.\n"
             f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}\n"
             f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}\n"
         )
-    if (local_run or sweep_yaml) and interactive:
+    if (local_run or sweep_definition) and interactive:
         raise NotImplementedError("Remote debugging requires a remote host and no sweep")
 
     wandb_kwargs = {'project': project_name, **wandb_kwargs}
@@ -251,13 +262,16 @@ def deploy(host: str = "", sweep_yaml: str = "", proc_num: int = 1, wandb_kwargs
         logger = WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
     else:
         ensure_torch_compatibility()
-        experiment_id = _ask_experiment_id(host, sweep_yaml)
+        if sweep_definition and isinstance(sweep_definition, tuple):
+            experiment_id = "None, rerunning old sweep"
+        else:
+            experiment_id = _ask_experiment_id(host, sweep_definition)
         print(f"experiment_id: {experiment_id}")
         if local_run:
             tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
             return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
         else:
-            _commit_and_sendjob(host, experiment_id, sweep_yaml, git_repo, project_name, proc_num, extra_slurm_headers,
+            _commit_and_sendjob(host, experiment_id, sweep_definition, git_repo, project_name, proc_num, extra_slurm_headers,
                                 wandb_kwargs, extra_modules, interactive, run_per_agent)
             sys.exit()
 
@@ -363,8 +377,8 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_repo: git.Repo, project_name: str,
-                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict, extra_modules=typing.List[str], interactive=False, count_per_agent=None):
+def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_definition: str, git_repo: git.Repo, project_name: str,
+                        proc_num: int, extra_slurm_header: str, wandb_kwargs: dict, extra_modules=List[str], interactive=False, count_per_agent=None):
     entrypoint, extra_modules, git_url, hash_commit, scripts_folder, ssh_session = commit(
         experiment_id, extra_modules, extra_slurm_header, git_repo, hostname)
 
@@ -373,7 +387,7 @@ def _commit_and_sendjob(hostname: str, experiment_id: str, sweep_yaml: str, git_
                              project_name, scripts_folder, ssh_session, wandb_kwargs)
     else:
         send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, extra_slurm_header,
-                  proc_num, project_name, scripts_folder, ssh_session, sweep_yaml, wandb_kwargs, count_per_agent)
+                  proc_num, project_name, scripts_folder, ssh_session, sweep_definition, wandb_kwargs, count_per_agent)
 
 
 def allocate_interactive(entrypoint, experiment_id, extra_modules, git_url, hash_commit,
@@ -401,10 +415,12 @@ def allocate_interactive(entrypoint, experiment_id, extra_modules, git_url, hash
 
 def send_jobs(
         entrypoint, experiment_id, extra_modules, git_url, hash_commit, extra_slurm_header,
-        proc_num, project_name, scripts_folder, ssh_session, sweep_yaml, wandb_kwargs, count_per_agent):
-
-    if sweep_yaml:
-        sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_yaml, wandb_kwargs)
+        proc_num, project_name, scripts_folder, ssh_session, sweep_definition, wandb_kwargs, count_per_agent):
+    if sweep_definition:
+        if isinstance(sweep_definition, str):
+            sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
+        else:
+            sweep_id, hash_commit = sweep_definition  # TODO: this branch should query wandb for the old parameters {git_url}, {hash_commit} and possibly {extra_modules}
         ssh_command = f"/opt/slurm/bin/sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules} {count_per_agent}"
     else:
         ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
