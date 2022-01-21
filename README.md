@@ -28,15 +28,9 @@ Example: (Updated)
 
 
 ## Installation
-### From repo (for buddy devs only)
-```shell
-git clone git@github.com:ministry-of-silly-code/buddy_cli.git
-pip install --user -e ./buddy-cli
-```
-
 ### Directly from pip
 ```shell
-pip install git+https://github.com/ministry-of-silly-code/buddy_cli.git@master\#egg\=buddy_cli
+pip install experiment-buddy
 ```
 
 ## Usage
