@@ -5,7 +5,7 @@ import subprocess
 
 import fabric
 import paramiko
-from invoke import UnexpectedExit
+import invoke
 
 SSH_TIMEOUT = 10
 logger = logging.getLogger(__name__)
@@ -46,9 +46,10 @@ def setup_ssh():
         logger.info("Keys not found. Generate keys:")
         retr = subprocess.run("ssh-keygen", shell=True)
         logger.info(retr.stdout)
-        logger.info("Copy key pair to your account.")
-        retr = subprocess.run("ssh-copy-id mila", shell=True)
-        logger.info(retr.stdout)
+
+    logger.info("Copy key pair to your account.")
+    retr = subprocess.run("ssh-copy-id mila", shell=True)
+    logger.info(retr.stdout)
 
     try:
         logger.info("Checking cluster connection...")
@@ -60,8 +61,8 @@ def setup_ssh():
         raise Exception(f"""
 Error while checking SSH connection, stopping
  - Double check that your username is '{mila_username}'?
- - Can you successfully connect as "ssh mila"?
- - Setup the public and private key for you and the mila cluster?
+ - Can you successfully connect as "ssh mila"? without being prompted for a password?
+    if not try to ruh `ssh-copy-id mila` and authenticate with your password.
 Raised Exception:
 """ + str(e))
 
@@ -97,7 +98,7 @@ def setup_github():
     with fabric.Connection(host='mila', connect_timeout=SSH_TIMEOUT) as remote_connection:
         try:
             retr = remote_connection.run("cat ~/.ssh/id_rsa.pub", hide=True)
-        except UnexpectedExit:
+        except invoke.UnexpectedExit:
             logger.info("Public key not found. Generate new key pair ...")
             remote_connection.run("ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa", hide=True)
             logger.info("Sending Public key to the cluster...")

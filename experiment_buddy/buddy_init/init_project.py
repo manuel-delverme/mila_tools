@@ -25,12 +25,15 @@ def init():
 
 
 def sys_main():
-    return_code = 1
     try:
         init()
-        return_code = 0
     except Exception as e:
         import traceback
         print(f'Error: {e}', file=sys.stderr)
+        sys.exit(1)
+    else:
+        sys.exit(0)
 
-    sys.exit(return_code)
+
+if __name__ == "__main__":
+    sys_main()
