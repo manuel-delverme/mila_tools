@@ -2,6 +2,7 @@ import argparse
 import datetime
 import logging
 import os
+import re
 import random
 import socket
 import subprocess
@@ -285,7 +286,8 @@ def ensure_torch_compatibility():
     with open("requirements.txt") as fin:
         reqs = fin.read()
         # torch, vision or audio.
-        if "torch" not in reqs and "torch==1.7.1+cu110" not in reqs:
+        matches = re.search(r"torch==.*cu.*", reqs)
+        if "torch" in reqs and not matches:
             # https://mila-umontreal.slack.com/archives/CFAS8455H/p1624292393273100?thread_ts=1624290747.269100&cid=CFAS8455H
             warnings.warn("""torch rocm4.2 version will be installed on the cluster which is not supported specify torch==1.7.1+cu110 in requirements.txt instead""")
 
