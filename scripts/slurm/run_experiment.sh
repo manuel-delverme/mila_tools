@@ -36,8 +36,13 @@ function load_git_folder() {
   mkdir -p "$HOME"/experiments/
   cd "$HOME"/experiments/
 
-  EXPERIMENT_FOLDER=$(mktemp -p . -d)
+  EXPERIMENT_FOLDER="$(mktemp -p . -d)"
+
   pull_experiment $GIT_URL $HASH_COMMIT $EXPERIMENT_FOLDER
+  EXPERIMENT_NAME=$(git log --format=%B -n 1)
+  cd ".."
+  mv "$EXPERIMENT_FOLDER" "$EXPERIMENT_FOLDER-$EXPERIMENT_NAME"
+  cd "$EXPERIMENT_FOLDER-$EXPERIMENT_NAME"
 }
 
 log "running on $(hostname)"
@@ -75,4 +80,4 @@ export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/commo
 
 # TODO: the client should send the mila_tools version to avoid issues
 log "/opt/slurm/bin/sbatch $SCRIPTS_FOLDER/srun_python.sh $ENTRYPOINT"
-/opt/slurm/bin/sbatch --comment "$(git log --format=%B -n 1)" $SCRIPTS_FOLDER/srun_python.sh $ENTRYPOINT
+/opt/slurm/bin/sbatch --comment "$EXPERIMENT_NAME" $SCRIPTS_FOLDER/srun_python.sh $ENTRYPOINT
