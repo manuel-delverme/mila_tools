@@ -13,7 +13,7 @@ class Backend(enum.Enum):
     DOCKER: str = "docker"
 
 
-def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> str:
+def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> Backend.value:
     try:
         ssh_session.run("/opt/slurm/bin/scontrol ping")
         return Backend.SLURM

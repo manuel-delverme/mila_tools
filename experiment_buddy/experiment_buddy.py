@@ -2,15 +2,15 @@ import argparse
 import datetime
 import logging
 import os
-import re
 import random
+import re
 import socket
 import subprocess
 import sys
 import time
 import types
 import warnings
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Optional
 
 import cloudpickle
 import fabric
@@ -31,13 +31,14 @@ try:
     import torch
 except ImportError:
     TORCH_ENABLED = False
+    torch = None
 else:
     TORCH_ENABLED = True
 
 logging.basicConfig(level=logging.INFO)
 
 wandb_escape = "^"
-hyperparams = None
+hyperparams: Optional[Dict] = None
 tb = tensorboard = None
 if os.path.exists("buddy_scripts/"):
     SCRIPTS_PATH = "buddy_scripts/"
@@ -133,7 +134,7 @@ class WandbWrapper:
         for k, v in hyperparams.items():
             register_param(k, v)
 
-    def add_scalar(self, tag: str, scalar_value: float, global_step: int):
+    def add_scalar(self, tag: str, scalar_value: float, global_step: Optional[int] = None):
         if scalar_value != scalar_value:
             warnings.warn(f"{tag} is {scalar_value} at {global_step} :(")
 
@@ -239,6 +240,7 @@ def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: i
     wandb_kwargs = {'project': project_name, **wandb_kwargs}
     common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
+    logger = None
 
     if disabled:
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard", "DISABLED", dtm)
