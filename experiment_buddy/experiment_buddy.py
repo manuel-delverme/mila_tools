@@ -143,11 +143,11 @@ class WandbWrapper:
         if self.tensorboard:
             self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
 
-    def add_scalars(self, dict_of_scalars: Dict[str, float], global_step: int, prefix: str = ""):
+    def add_scalars(self, dict_of_scalars: Dict[str, float], global_step: int = None, prefix: str = ""):
         for k, v in dict_of_scalars.items():
             self.add_scalar(prefix + k, v, global_step)
 
-    def add_figure(self, tag, figure, global_step, close=True):
+    def add_figure(self, tag, figure, global_step=None, close=True):
         self.run.log({tag: figure}, global_step)
         if close:
             plt.close(figure)
@@ -156,7 +156,7 @@ class WandbWrapper:
             self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
 
     @staticmethod
-    def add_histogram(tag, values, global_step):
+    def add_histogram(tag, values, global_step=None):
         if len(values) <= 2:
             raise ValueError("histogram requires at least 3 values")
 
@@ -165,11 +165,11 @@ class WandbWrapper:
         else:
             wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
 
-    def plot(self, tag, values, global_step):
+    def plot(self, tag, values, global_step=None):
         wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
         plt.close()
 
-    def add_object(self, tag, obj, global_step):
+    def add_object(self, tag, obj, global_step=None):
         if not TORCH_ENABLED:
             raise NotImplementedError
 
