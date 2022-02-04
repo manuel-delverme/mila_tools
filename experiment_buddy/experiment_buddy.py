@@ -343,7 +343,7 @@ def _ensure_scripts_directory(ssh_session: fabric.Connection, extra_slurm_header
     remote_tmp_folder = retr.stdout.strip() + "/"
     ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
 
-    scripts_dir = os.path.join(SCRIPTS_PATH, experiment_buddy.utils.get_backend(ssh_session, working_dir).value)
+    scripts_dir = os.path.join(SCRIPTS_PATH, experiment_buddy.utils.get_backend(ssh_session, working_dir))
 
     for file in os.listdir(scripts_dir):
         if extra_slurm_header and file in ("run_sweep.sh", "srun_python.sh"):

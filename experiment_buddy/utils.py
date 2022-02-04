@@ -1,4 +1,3 @@
-import enum
 import os
 import subprocess
 
@@ -7,28 +6,22 @@ import git
 import invoke
 
 
-class Backend(enum.Enum):
-    GENERAL: str = "general"
-    SLURM: str = "slurm"
-    DOCKER: str = "docker"
-
-
-def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> Backend.value:
+def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> str:
     try:
         ssh_session.run("/opt/slurm/bin/scontrol ping")
-        return Backend.SLURM
+        return "slurm"
     except invoke.exceptions.UnexpectedExit:
         pass
 
     if not os.path.exists(os.path.join(project_dir, "Dockerfile")):
-        return Backend.GENERAL
+        return "general"
     try:
         ssh_session.run("docker -v")
         ssh_session.run("docker-compose -v")
-        return Backend.DOCKER
+        return "docker"
     except invoke.exceptions.UnexpectedExit:
         pass
-    return Backend.GENERAL
+    return "general"
 
 
 def get_project_name(git_repo: git.Repo) -> str:
