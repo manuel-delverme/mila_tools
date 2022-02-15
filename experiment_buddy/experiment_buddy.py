@@ -189,6 +189,13 @@ class WandbWrapper:
     def close(self):
         pass
 
+    def record(self, tag, value, global_step=None, exclude=None):
+        # Let wandb figure it out.
+        self.run.log({tag: value}, step=global_step, commit=False)
+
+    def dump(self, step=None):
+        self.run.log({}, step=step, commit=True)
+
 
 def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: int = 1, wandb_kwargs=None,
            extra_slurm_headers="", extra_modules=None, disabled=False, interactive=False, run_per_agent=None) -> WandbWrapper:
