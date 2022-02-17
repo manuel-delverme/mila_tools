@@ -265,8 +265,7 @@ def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: i
             jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
             jid += os.environ.get("SLURM_JOB_ID", "")
             # TODO: turn into a big switch based on scheduler
-            tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-            logger = WandbWrapper(f"{experiment_id}_{jid}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+            logger = WandbWrapper(f"{experiment_id}_{jid}", local_tensorboard=None, **common_kwargs)
     elif debug and not interactive:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
