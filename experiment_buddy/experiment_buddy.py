@@ -74,7 +74,12 @@ def register_defaults(config_params):
                 k = k.replace("_", "-")
                 parser.add_argument(f"--{k}", f"--^{k}", type=type(v), default=v)
 
-    parsed = parser.parse_args()
+    try:
+        parsed = parser.parse_args()
+    except TypeError as e:
+        print("Type mismatch between registered hyperparameters defaults and actual values,"
+              " it might be a float argument that was passed as an int (e.g. lr=1 rather than lr=1.0) but set as a float (--lr 0.1)")
+        raise e
 
     for k, v in vars(parsed).items():
         k = k.lstrip(wandb_escape)
