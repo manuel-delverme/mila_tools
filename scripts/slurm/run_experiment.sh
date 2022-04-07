@@ -73,7 +73,10 @@ log "Using shared venv @ $HOME/venv"
 log "Upgrading pip"
 python3 -m pip install --upgrade pip
 log "Upgrading requirements"
-python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
+
+# cat requirements.txt | xargs --max-args=1 --max-procs=20 python3 -m pip install --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
+python3 -m pip cache purge
+python3 -m pip install --upgrade -r "requirements.txt" --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
 log "Requirements upgraded"
 
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
