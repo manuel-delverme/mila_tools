@@ -203,7 +203,9 @@ class WandbWrapper:
 
 
 def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: int = 1, wandb_kwargs=None,
-           extra_slurm_headers="", extra_modules=None, disabled=False, interactive=False, run_per_agent=None) -> WandbWrapper:
+           extra_slurm_headers="", extra_modules=None, disabled=False, interactive=False, run_per_agent=None,
+           wandb_run_name=None
+           ) -> WandbWrapper:
     """
     :param host: The host to deploy to.
     :param sweep_definition: Either a yaml file or a string containing the sweep id to resume from
@@ -214,6 +216,7 @@ def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: i
     :param disabled: If true does not run jobs in the cluster and invokes wandb.init with disabled=True.
     :param interactive: Not yet implemented.
     :param run_per_agent: If set to a number, each agent will run `run_per_agent` experiments and then exit.
+    :param wandb_run_name: If set, will use this name for the wandb run.
     :return: A tensorboard-like object that can be used to log data.
     """
     if wandb_kwargs is None:
@@ -280,7 +283,7 @@ def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: i
         if sweep_definition and isinstance(sweep_definition, tuple):
             experiment_id = "None, rerunning old sweep"
         else:
-            experiment_id = _ask_experiment_id(host, sweep_definition)
+            experiment_id = wandb_run_name if wandb_run_name is not None else _ask_experiment_id(host, sweep_yaml)
         print(f"experiment_id: {experiment_id}")
         if local_run:
             tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
