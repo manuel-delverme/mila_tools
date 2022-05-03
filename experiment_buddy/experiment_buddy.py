@@ -283,7 +283,7 @@ def deploy(host: str = "", sweep_definition: Union[str, tuple] = "", proc_num: i
         if sweep_definition and isinstance(sweep_definition, tuple):
             experiment_id = "None, rerunning old sweep"
         else:
-            experiment_id = wandb_run_name if wandb_run_name is not None else _ask_experiment_id(host, sweep_yaml)
+            experiment_id = wandb_run_name if wandb_run_name is not None else _ask_experiment_id(host, sweep_definition)
         print(f"experiment_id: {experiment_id}")
         if local_run:
             tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
