@@ -53,9 +53,12 @@ def register(config_params):
     return register_defaults(config_params)
 
 
-def register_defaults(config_params):
+def register_defaults(config_params, allow_overwrite=False):
     global hyperparams
     # TODO: fails on nested config object
+    if allow_overwrite:
+        hyperparams = None
+
     if hyperparams is not None:
         raise RuntimeError("refusing to overwrite registered parameters")
 
@@ -470,7 +473,7 @@ def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
         data_loaded = yaml.safe_load(stream)
 
     if data_loaded["program"] != entrypoint:
-        raise ValueError(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
+        warnings.warn(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
 
     wandb_stdout = subprocess.check_output([
         "wandb", "sweep",
@@ -481,7 +484,7 @@ def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
     ], stderr=subprocess.STDOUT).decode("utf-8").split("\n")
 
     row = next(row for row in wandb_stdout if "Run sweep agent with:" in row)
-    print(next(row for row in wandb_stdout if "View" in row))
+    print("\n".join(wandb_stdout))
 
     sweep_id = row.split()[-1].strip()
     return sweep_id
