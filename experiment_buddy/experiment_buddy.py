@@ -443,7 +443,7 @@ def send_jobs(
             sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
         else:
             sweep_id, hash_commit = sweep_definition  # TODO: this branch should query wandb for the old parameters {git_url}, {hash_commit} and possibly {extra_modules}
-        ssh_command = f"/opt/slurm/bin/sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules} {count_per_agent}"
+        ssh_command = f"sbatch {scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules} {count_per_agent}"
     else:
         ssh_command = f"bash -l {scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
         print("monitor your run on https://wandb.ai/")

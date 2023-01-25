@@ -6,11 +6,9 @@
 #SBATCH --mem=24GB
 #SBATCH --cpus-per-task=4
 #SBATCH --gres=gpu:1
-#SBATCH --partition=long
 #SBATCH --get-user-env=L
 set -e
 
-# Module system
 function log() {
   echo -e "\e[32m"[DEPLOY LOG] $1"\e[0m"
 }

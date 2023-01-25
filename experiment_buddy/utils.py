@@ -8,7 +8,7 @@ import invoke
 
 def get_backend(ssh_session: fabric.connection.Connection, project_dir: str) -> str:
     try:
-        ssh_session.run("/opt/slurm/bin/scontrol ping")
+        ssh_session.run("scontrol ping")
         return "slurm"
     except invoke.exceptions.UnexpectedExit:
         pass
