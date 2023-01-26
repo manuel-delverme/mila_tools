@@ -1,7 +1,7 @@
 #! /bin/bash
 #SBATCH --job-name=spython
-#SBATCH --output=job_output.txt
-#SBATCH --error=job_error.txt
+#SBATCH --output="$SCRATCH/job_output.txt"
+#SBATCH --error="$SCRATCH/job_error.txt"
 #SBATCH --time=2-00:00
 #SBATCH --mem=24GB
 #SBATCH --cpus-per-task=4
