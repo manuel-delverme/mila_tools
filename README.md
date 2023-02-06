@@ -59,8 +59,9 @@ More details on experiment-buddy:
 
 # To run your code on the cluster (Mila users)
 Set host as `mila`:
+
 ```python
-experiment_buddy.deploy(host='mila')
+experiment_buddy.deploy(url='mila')
 ```
 Run your code:
 ```shell
