@@ -20,6 +20,7 @@ import yaml
 
 import experiment_buddy.utils
 from experiment_buddy import executors
+from experiment_buddy.executors import DockerExecutor
 
 try:
     import torch
@@ -200,8 +201,7 @@ class WandbWrapper:
 
 
 def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_kwargs=None,
-           extra_slurm_headers="", extra_modules=None, disabled=False, run_per_agent=None, wandb_run_name=None
-           ) -> WandbWrapper:
+           extra_slurm_headers="", extra_modules=None, disabled=False, wandb_run_name=None) -> WandbWrapper:
     """
     :param url: The host to deploy to.
     :param sweep_definition: Either a yaml file or a string containing the sweep id to resume from
@@ -270,30 +270,22 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
             tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
             return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
         else:
-            ensure_torch_compatibility()
+            entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
+            extra_modules = "@".join(extra_modules)
+            executor: DockerExecutor = executors.get_executor(url)
+            executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
+            hash_commit = git_sync(experiment_id, git_repo)
+            git_url = git_repo.remotes[0].url
 
-            entrypoint, extra_modules, git_url, hash_commit, scripts_folder, executor = commit(
-                experiment_id, extra_modules, extra_slurm_headers, git_repo, url)
-
-            send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, proc_num, project_name, scripts_folder, executor,
-                      sweep_definition, wandb_kwargs)
+            for _ in tqdm.trange(proc_num):
+                if sweep_definition:
+                    sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
+                    executor.sweep(git_url, hash_commit, extra_modules, sweep_id)
+                else:
+                    executor.launch(git_url, entrypoint, hash_commit, extra_modules)
             sys.exit()
 
     return logger
-
-
-def ensure_torch_compatibility():
-    if not os.path.exists("requirements.txt"):
-        return
-
-    with open("requirements.txt") as fin:
-        reqs = fin.read()
-        # torch, vision or audio.
-        matches = re.search(r"torch==.*cu.*", reqs)
-        if "torch" in reqs and not matches:
-            # https://mila-umontreal.slack.com/archives/CFAS8455H/p1624292393273100?thread_ts=1624290747.269100&cid=CFAS8455H
-            warnings.warn(
-                """torch rocm4.2 version will be installed on the cluster which is not supported specify torch==1.7.1+cu110 in requirements.txt instead""")
 
 
 def _ask_experiment_id(cluster, sweep):
@@ -335,32 +327,15 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-def send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, proc_num, project_name, scripts_folder, ssh_session,
+def send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, proc_num, project_name, ssh_session,
               sweep_definition, wandb_kwargs):
     for _ in tqdm.trange(proc_num):
         if sweep_definition:
             sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
-            ssh_session.sweep(scripts_folder, git_url, hash_commit, extra_modules, sweep_id)
+            ssh_session.sweep(git_url, hash_commit, extra_modules, sweep_id)
         else:
-            ssh_session.launch(scripts_folder, git_url, entrypoint, hash_commit, extra_modules)
+            ssh_session.launch(git_url, entrypoint, hash_commit, extra_modules)
             # ssh_command = f"bash -l
-
-
-def commit(experiment_id, extra_modules, extra_slurm_header, git_repo, hostname):
-    extra_modules = "@".join(extra_modules)
-    session = executors.get_executor(hostname)
-
-    # remote_url = git_repo.remotes[0].config_reader.get("url")
-    # project_name, _ = os.path.splitext(os.path.basename(remote_url))
-
-    scripts_folder = session.ensure_scripts_directory(extra_slurm_header, git_repo.working_dir)
-    hash_commit = git_sync(experiment_id, git_repo)
-
-
-
-    git_url = git_repo.remotes[0].url
-    entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
-    return entrypoint, extra_modules, git_url, hash_commit, scripts_folder, session
 
 
 def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):

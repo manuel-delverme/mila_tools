@@ -7,9 +7,8 @@ echo "Using $SHELL as shell"
 # Module system
 function log() {
   echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
-  echo -e "[DEPLOY LOG] $*" >> $HOME/last_buddy_run_experiment_log.txt
+  echo -e "[DEPLOY LOG] $*" >>$HOME/last_buddy_run_experiment_log.txt
 }
-
 
 function pull_experiment() {
   GIT_URL=$1
@@ -54,10 +53,9 @@ EXTRA_MODULES=$(echo $4 | tr "@" " ")
 module purge
 log "Refreshing modules..."
 log "EXTRA_MODULES=$EXTRA_MODULES"
-for MODULE in $EXTRA_MODULES
-do
-	log "module load $MODULE"
-	module load $MODULE
+for MODULE in $EXTRA_MODULES; do
+  log "module load $MODULE"
+  module load $MODULE
 done
 
 load_git_folder $GIT_URL $HASH_COMMIT
@@ -75,6 +73,10 @@ python3 -m pip install --upgrade pip
 log "Upgrading requirements"
 
 # cat requirements.txt | xargs --max-args=1 --max-procs=20 python3 -m pip install --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
+
+PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
+apt install -y "python$PYTHON_VERSION-venv"
+
 python3 -m pip cache purge
 python3 -m pip install --upgrade -r "requirements.txt" --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
 log "Requirements upgraded"
