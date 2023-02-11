@@ -48,7 +48,12 @@ GIT_URL=$1
 ENTRYPOINT=$2
 HASH_COMMIT=$3
 
-log "Refreshing modules..."
+PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
+
+log "Refreshing packages..."
+log "install -y python$PYTHON_VERSION-venv"
+sudo apt-get update
+sudo apt-get install -y "python$PYTHON_VERSION-venv"
 
 load_git_folder $GIT_URL $HASH_COMMIT
 
@@ -62,13 +67,11 @@ log "Using shared venv @ $HOME/venv"
 
 log "Upgrading pip"
 python3 -m pip install --upgrade pip
+
 log "Upgrading requirements"
-
-python3 -m pip cache purge
 python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html --use-deprecated=legacy-resolver | grep -v "Requirement already satisfied"
-log "Requirements upgraded"
 
-export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
+log "Requirements upgraded"
 
 log "python3 -O -u $ENTRYPOINT"
 export BUDDY_IS_DEPLOYED=1

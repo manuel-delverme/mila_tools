@@ -2,12 +2,11 @@ import argparse
 import datetime
 import logging
 import os
-import re
 import subprocess
 import sys
 import types
 import warnings
-from typing import Dict, Union, List, Optional
+from typing import Dict, Optional
 
 import cloudpickle
 import git
@@ -340,23 +339,13 @@ def send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, pr
 
 def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
     with open(sweep_yaml, 'r') as stream:
-        data_loaded = yaml.safe_load(stream)
+        sweep_dict = yaml.safe_load(stream)
+    sweep_dict["name"] = experiment_id
 
-    if data_loaded["program"] != entrypoint:
-        warnings.warn(f'YAML {data_loaded["program"]} does not match the entrypoint {entrypoint}')
+    if sweep_dict["program"] != entrypoint:
+        warnings.warn(f'YAML {sweep_dict["program"]} does not match the entrypoint {entrypoint}')
 
-    wandb_stdout = subprocess.check_output([
-        "wandb", "sweep",
-        "--name", f'"{experiment_id}"',
-        "--project", project,
-        *(["--entity", wandb_kwargs["entity"]] if "entity" in wandb_kwargs else []),
-        sweep_yaml
-    ], stderr=subprocess.STDOUT).decode("utf-8").split("\n")
-
-    row = next(row for row in wandb_stdout if "Run sweep agent with:" in row)
-    print("\n".join(wandb_stdout))
-
-    sweep_id = row.split()[-1].strip()
+    sweep_id = wandb.sweep(sweep_dict, project=project, entity=wandb_kwargs.get("entity", None))
     return sweep_id
 
 

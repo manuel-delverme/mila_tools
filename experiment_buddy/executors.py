@@ -5,13 +5,13 @@ import subprocess
 import tempfile
 import time
 import urllib.parse
+import uuid
 import warnings
 from typing import Optional
 
+import boto3
 import docker
 import fabric
-import wandb
-import wandb.env
 from invoke import UnexpectedExit
 from paramiko.ssh_exception import SSHException
 
@@ -70,18 +70,23 @@ class Executor(abc.ABC):
 
 class SSHExecutor(Executor):
     def __init__(self, url):
-        ensure_torch_compatibility()
         try:
-            self.ssh_session = fabric.Connection(host=url.netloc, connect_timeout=10, forward_agent=True)
-            self.ssh_session.run("")
+            self.ssh_session = fabric.Connection(host=url.hostname, connect_timeout=10, forward_agent=True)
+            for _ in range(3):
+                try:
+                    self.ssh_session.run("")
+                    break
+                except Exception as e:
+                    print(e)
+                    time.sleep(5)
         except SSHException as e:
             raise SSHException(
                 "SSH connection failed!,"
-                f"Make sure you can successfully run `ssh {url.netloc}` with no parameters, "
+                f"Make sure you can successfully run `ssh {url.hostname}` with no parameters, "
                 f"any parameters should be set in the ssh_config file"
             )
         # self.scripts_dir = None
-        self.scripts_folder = None  # TODO: what is the difference between scripts_dir and scripts_folder?
+        self.scripts_folder = None
         self.working_dir = None
 
     def run(self, cmd):
@@ -92,8 +97,8 @@ class SSHExecutor(Executor):
 
     def launch(self, git_url, entrypoint, hash_commit, extra_modules):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
+        print(ssh_command)
         self.ssh_session.run(ssh_command)
-        time.sleep(1)
 
     def sweep(self, git_url, hash_commit, extra_modules, sweep_id):
         ssh_command = f"sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
@@ -114,10 +119,17 @@ class SSHExecutor(Executor):
         self._ensure_scripts_directory(self.working_dir)
 
     def _ensure_scripts_directory(self, working_dir: str):
+        self.check_or_copy_wandb_key()
+
+        # Check if github-personal is in the ssh config
+        try:
+            self.ssh_session.run("cat ~/.ssh/config | grep github-personal")
+        except UnexpectedExit:
+            self.ssh_session.run("echo 'Host github-personal\n\tHostName github.com\n' >> ~/.ssh/config")
+
         if self.scripts_folder:
             return
 
-        self.check_or_copy_wandb_key()
         retr = self.ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
         remote_tmp_folder = retr.stdout.strip() + "/"
         # self.ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
@@ -131,12 +143,89 @@ class SSHExecutor(Executor):
         self.scripts_folder = remote_tmp_folder
 
 
+class HetznerExecutor(SSHExecutor):
+    def __init__(self, url):
+        requested_machine = url.hostname
+        from hcloud import Client
+        from hcloud.server_types.domain import ServerType
+        from hcloud.images.domain import Image
+        self.hclient = Client(token=os.environ["HCLOUD_TOKEN"])
+        # TODO: check if the machine is already available
+        # servers = self.hclient.servers.get_all()
+        ssh_keys = self.hclient.ssh_keys.get_all()
+        for key in ssh_keys:
+            key.data_model.id = None  # Yay bugs, this causes a fallback to the name, which works... unlike the id.
+
+        # name = "auto-experiment-buddy-" + str(uuid.uuid4()),
+        response = self.hclient.servers.create(
+            name=str(uuid.uuid4()),
+            server_type=ServerType(name=requested_machine),
+            image=Image(name="ubuntu-20.04"),
+            ssh_keys=self.hclient.ssh_keys.get_all(),
+        )
+        new_host = response.server.data_model.public_net.ipv4.ip
+        for a in response.next_actions:
+            print("Waiting for server to be ready...", a.command)
+            a.wait_until_finished()
+
+        url = url._replace(netloc=new_host)
+        super().__init__(url)
+
+    def setup_remote(self, extra_slurm_header: Optional[str], working_dir: str):
+        if extra_slurm_header:
+            raise NotImplementedError
+
+        self.working_dir = working_dir
+        self._ensure_scripts_directory(self.working_dir)
+
+
+class AwsExecutor(SSHExecutor):
+    def __init__(self, url):
+        requested_machine = url.hostname
+
+        # Create an EC2 client
+        client = boto3.client('ec2', region_name='us-east-1')
+
+        # Launch the instance, allow ssh access from anywhere
+        response = client.run_instances(
+            ImageId="ami-0557a15b87f6559cf",  # Canonical, Ubuntu, 22.04 LTS, amd64 jammy image build on 2023-02-08
+            KeyName="us1",
+            InstanceType=requested_machine,
+            MinCount=1,
+            MaxCount=1,
+            SecurityGroups=['NOSecurity'],
+        )
+
+        istance, = response['Instances']
+        instance_id = istance['InstanceId']
+
+        # Wait until the instance is running
+        client.get_waiter('instance_running').wait(InstanceIds=[instance_id, ])
+
+        response = client.describe_instances(InstanceIds=[instance_id, ])
+        reservation, = response["Reservations"]
+        istance, = reservation["Instances"]
+        public_dns_name = istance['PublicDnsName']
+
+        print(public_dns_name)
+
+        url = url._replace(netloc=public_dns_name)
+        super().__init__(url)
+
+    def setup_remote(self, extra_slurm_header: Optional[str], working_dir: str):
+        if extra_slurm_header:
+            raise NotImplementedError
+
+        self.working_dir = working_dir
+        self._ensure_scripts_directory(self.working_dir)
+
+
 class SSHSLURMExecutor(Executor):
     def __init__(self, url):
         ensure_torch_compatibility()
         self.ssh_session = fabric.Connection(host=url.path, connect_timeout=10, forward_agent=True)
-        self.scripts_dir = None
-        self.scripts_folder = None  # TODO: what is the difference between scripts_dir and scripts_folder?
+        self.ssh_session.run("")
+        self.scritps_folder = None
         self.extra_slurm_header = None
         self.working_dir = None
 
@@ -148,17 +237,14 @@ class SSHSLURMExecutor(Executor):
 
     def launch(self, git_url, entrypoint, hash_commit, extra_modules):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
-        if not self.scripts_dir:
-            self.check_or_copy_wandb_key()
-            self.scripts_dir = self._ensure_scripts_directory(self.extra_slurm_header, self.working_dir)
         self.ssh_session.run(ssh_command)
         time.sleep(1)
 
     def sweep(self, git_url, hash_commit, extra_modules, sweep_id):
-        ssh_command = f"sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
-        raise NotImplementedError
+        ssh_command = f"source /etc/profile; sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
+        self.run(ssh_command)
 
-    def check_or_copy_wandb_key(self):
+    def _check_or_copy_wandb_key(self):
         try:
             self.ssh_session.run("test -f $HOME/.netrc")
         except UnexpectedExit:
@@ -168,12 +254,12 @@ class SSHSLURMExecutor(Executor):
     def setup_remote(self, extra_slurm_header: str, working_dir: str):
         self.extra_slurm_header = extra_slurm_header
         self.working_dir = working_dir
+        self._check_or_copy_wandb_key()
+        self._ensure_scripts_directory(self.extra_slurm_header, self.working_dir)
 
     def _ensure_scripts_directory(self, extra_slurm_header: str, working_dir: str):
         retr = self.ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
         remote_tmp_folder = retr.stdout.strip() + "/"
-        self.ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
-
         backend = experiment_buddy.utils.get_backend(self.ssh_session, working_dir)
         scripts_dir = os.path.join(SCRIPTS_PATH, backend)
 
@@ -282,9 +368,12 @@ def get_executor(url):
                 f"Make sure you can successfully run `ssh {url}` with no parameters, "
                 f"any parameters should be set in the ssh_config file"
             )
-        executor.run("")
     elif url.scheme == "ssh":
         executor = SSHExecutor(url)
+    elif url.scheme == "hetzner":
+        executor = HetznerExecutor(url)
+    elif url.scheme == "aws":
+        executor = AwsExecutor(url)
     elif url.scheme == "local":
         raise NotImplementedError
     elif url.scheme == "docker":
