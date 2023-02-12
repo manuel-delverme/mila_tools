@@ -53,7 +53,7 @@ PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
 log "Refreshing packages..."
 log "install -y python$PYTHON_VERSION-venv"
 sudo apt-get update
-sudo apt-get install -y "python$PYTHON_VERSION-venv"
+sudo apt-get install -y "gcc python$PYTHON_VERSION-venv python$PYTHON_VERSION-dev"
 
 load_git_folder $GIT_URL $HASH_COMMIT
 

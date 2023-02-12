@@ -186,9 +186,26 @@ class AwsExecutor(SSHExecutor):
         # Create an EC2 client
         client = boto3.client('ec2', region_name='us-east-1')
 
+        # find the right image for the requested_machine
+        description, = client.describe_instance_types(Filters=[
+            {'Name': 'instance-type',
+             'Values': [requested_machine, ]},
+        ], )["InstanceTypes"]
+        supported_architectures = description["ProcessorInfo"]["SupportedArchitectures"]
+
+        # we want Canonical, Ubuntu, 22.04 LTS
+        response = client.describe_images(
+            Filters=[
+                {'Name': 'description', 'Values': [f"*Canonical, Ubuntu, 22.04 LTS*", ]},
+                {'Name': 'architecture', 'Values': supported_architectures, },
+            ],
+        )
+
+        image_id = response['Images'][0]['ImageId']
+
         # Launch the instance, allow ssh access from anywhere
         response = client.run_instances(
-            ImageId="ami-0557a15b87f6559cf",  # Canonical, Ubuntu, 22.04 LTS, amd64 jammy image build on 2023-02-08
+            ImageId=image_id,
             KeyName="us1",
             InstanceType=requested_machine,
             MinCount=1,
