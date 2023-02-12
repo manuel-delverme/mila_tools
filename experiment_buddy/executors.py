@@ -187,10 +187,18 @@ class AwsExecutor(SSHExecutor):
         client = boto3.client('ec2', region_name='us-east-1')
 
         # find the right image for the requested_machine
-        description, = client.describe_instance_types(Filters=[
-            {'Name': 'instance-type',
-             'Values': [requested_machine, ]},
-        ], )["InstanceTypes"]
+        description = None
+        args = dict(Filters=[{'Name': 'instance-type', 'Values': [requested_machine, ]}, ], )
+        while True:
+            response = client.describe_instance_types(**args)
+            if response["InstanceTypes"]:
+                description, = response["InstanceTypes"]
+                break
+
+            if "NextToken" not in response:
+                break
+            args["NextToken"] = response["NextToken"]
+
         supported_architectures = description["ProcessorInfo"]["SupportedArchitectures"]
 
         # we want Canonical, Ubuntu, 22.04 LTS
@@ -198,10 +206,14 @@ class AwsExecutor(SSHExecutor):
             Filters=[
                 {'Name': 'description', 'Values': [f"*Canonical, Ubuntu, 22.04 LTS*", ]},
                 {'Name': 'architecture', 'Values': supported_architectures, },
+                {'Name': 'owner-alias', 'Values': ['amazon', ]}
             ],
         )
 
-        image_id = response['Images'][0]['ImageId']
+        # Get the latest Ubuntu 22.04 image from Canonical
+        images = response['Images']
+        images.sort(key=lambda x: x['CreationDate'], reverse=True)
+        image_id = images[0]['ImageId']
 
         # Launch the instance, allow ssh access from anywhere
         response = client.run_instances(
@@ -210,9 +222,9 @@ class AwsExecutor(SSHExecutor):
             InstanceType=requested_machine,
             MinCount=1,
             MaxCount=1,
-            SecurityGroups=['NOSecurity'],
-        )
 
+            SecurityGroupIds=['sg-080085f27a7461608', ],
+        )
         istance, = response['Instances']
         instance_id = istance['InstanceId']
 
