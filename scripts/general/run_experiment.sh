@@ -53,8 +53,8 @@ PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
 log "Refreshing packages..."
 sudo apt-get update
 
-log "install -y gcc screen"
-sudo apt-get install -y gcc screen
+log "install -y build-essential screen"
+sudo apt-get install -y build-essential screen
 
 log "install -y python$PYTHON_VERSION-venv"
 sudo apt-get install -y "python$PYTHON_VERSION-venv"

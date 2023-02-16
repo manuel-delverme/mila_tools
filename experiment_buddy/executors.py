@@ -72,12 +72,12 @@ class SSHExecutor(Executor):
     def __init__(self, url):
         try:
             self.ssh_session = fabric.Connection(host=url.hostname, connect_timeout=10, forward_agent=True)
-            for _ in range(3):
+            for _ in range(10):
                 try:
                     self.ssh_session.run("")
                     break
                 except Exception as e:
-                    print(e)
+                    print(e, "Retrying in 5 seconds...")
                     time.sleep(5)
         except SSHException as e:
             raise SSHException(
@@ -200,6 +200,7 @@ class AwsExecutor(SSHExecutor):
             args["NextToken"] = response["NextToken"]
 
         supported_architectures = description["ProcessorInfo"]["SupportedArchitectures"]
+        print("Selected architecture", supported_architectures)
 
         # we want Canonical, Ubuntu, 22.04 LTS
         response = client.describe_images(
@@ -214,6 +215,7 @@ class AwsExecutor(SSHExecutor):
         images = response['Images']
         images.sort(key=lambda x: x['CreationDate'], reverse=True)
         image_id = images[0]['ImageId']
+        print("Selected image", image_id)
 
         # Launch the instance, allow ssh access from anywhere
         response = client.run_instances(
