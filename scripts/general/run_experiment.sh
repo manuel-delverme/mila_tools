@@ -51,16 +51,16 @@ HASH_COMMIT=$3
 PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
 
 log "Refreshing packages..."
-sudo apt-get update
+sudo apt update
 
 log "install -y build-essential screen"
 sudo apt-get install -y build-essential screen
 
 log "install -y python$PYTHON_VERSION-venv"
-sudo apt-get install -y "python$PYTHON_VERSION-venv"
+sudo apt install -y "python$PYTHON_VERSION-venv"
 
 log "install -y python$PYTHON_VERSION-dev"
-sudo apt-get install -y "python$PYTHON_VERSION-dev"
+sudo apt install -y "python$PYTHON_VERSION-dev"
 
 load_git_folder $GIT_URL $HASH_COMMIT
 
@@ -83,4 +83,4 @@ log "Requirements upgraded"
 log "python3 -O -u $ENTRYPOINT"
 export BUDDY_IS_DEPLOYED=1
 
-screen -m -d bash -c "python3 -O -u $ENTRYPOINT"
+screen -d -m -S experiment bash -c "python3 -O -u $ENTRYPOINT"
