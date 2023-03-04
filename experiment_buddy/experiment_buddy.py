@@ -300,7 +300,7 @@ def _ask_experiment_id(cluster, sweep):
         root.withdraw()
         experiment_id = tkinter.simpledialog.askstring(title, "experiment_id")
         root.destroy()
-    except:
+    except Exception as e:
         if os.environ.get('BUDDY_CURRENT_TESTING_BRANCH', ''):
             import uuid
             experiment_id = f'TESTING_BRANCH-{os.environ["BUDDY_CURRENT_TESTING_BRANCH"]}-{uuid.uuid4()}'

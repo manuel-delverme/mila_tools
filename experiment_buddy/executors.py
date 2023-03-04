@@ -218,15 +218,28 @@ class AwsExecutor(SSHExecutor):
         print("Selected image", image_id)
 
         # Launch the instance, allow ssh access from anywhere
+        # --instance-initiated-shutdown-behavior terminate
         response = client.run_instances(
             ImageId=image_id,
             KeyName="us1",
             InstanceType=requested_machine,
             MinCount=1,
             MaxCount=1,
-
             SecurityGroupIds=['sg-080085f27a7461608', ],
+            InstanceInitiatedShutdownBehavior='terminate',
+            TagSpecifications=[
+                {
+                    'ResourceType': 'instance',
+                    'Tags': [
+                        {
+                            'Key': 'Name',
+                            'Value': 'experiment-buddy'
+                        },
+                    ]
+                },
+            ],
         )
+
         istance, = response['Instances']
         instance_id = istance['InstanceId']
 
