@@ -64,8 +64,17 @@ class Executor(abc.ABC):
     def setup_remote(self, extra_slurm_header: str, working_dir: str) -> str:
         raise NotImplementedError
 
+    @abc.abstractmethod
     def put(self, local_path, remote_path):
-        return
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
+        raise NotImplementedError
 
 
 class SSHExecutor(Executor):
@@ -95,12 +104,12 @@ class SSHExecutor(Executor):
     def put(self, local_path, remote_path):
         return self.ssh_session.put(local_path, remote_path)
 
-    def launch(self, git_url, entrypoint, hash_commit, extra_modules):
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
         print(ssh_command)
         self.ssh_session.run(ssh_command)
 
-    def sweep(self, git_url, hash_commit, extra_modules, sweep_id):
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
         ssh_command = f"sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
         raise NotImplementedError
 
@@ -263,6 +272,11 @@ class AwsExecutor(SSHExecutor):
         self.working_dir = working_dir
         self._ensure_scripts_directory(self.working_dir)
 
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
+        ssh_command = f"bash -l {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
+        print(ssh_command)
+        self.ssh_session.run(ssh_command)
+
 
 class SSHSLURMExecutor(Executor):
     def __init__(self, url):
@@ -279,12 +293,12 @@ class SSHSLURMExecutor(Executor):
     def put(self, local_path, remote_path):
         return self.ssh_session.put(local_path, remote_path)
 
-    def launch(self, git_url, entrypoint, hash_commit, extra_modules):
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {extra_modules}"
         self.ssh_session.run(ssh_command)
         time.sleep(1)
 
-    def sweep(self, git_url, hash_commit, extra_modules, sweep_id):
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
         ssh_command = f"source /etc/profile; sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
         self.run(ssh_command)
 
@@ -333,7 +347,7 @@ class DockerExecutor(Executor):
         environment.update({"DOCKER_CONTEXT": self.context})
         self.docker_client.containers.run(image, cmd, environment=environment, remove=True)
 
-    def launch(self, git_url, entrypoint, hash_commit, extra_modules):
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules):
         self.maybe_pack_archive(git_url, hash_commit)
 
         out = subprocess.run(f"docker --context {self.context} run --name {hash_commit} --rm -it -t {self.docker_tag} sleep infinity",

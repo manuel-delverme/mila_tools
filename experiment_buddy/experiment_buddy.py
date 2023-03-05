@@ -1,11 +1,13 @@
 import argparse
 import datetime
+import enum
 import logging
 import os
 import subprocess
 import sys
 import types
 import warnings
+from multiprocessing import Pool
 from typing import Dict, Optional
 
 import cloudpickle
@@ -271,20 +273,44 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
         else:
             entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
             extra_modules = "@".join(extra_modules)
-            executor: DockerExecutor = executors.get_executor(url)
-            executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
+
+            sweep_id = None
+            if sweep_definition:
+                sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
+                sweep_path = [wandb.run.entity, project_name, sweep_id]
+                sweep_id = "/".join(sweep_path)
+
             hash_commit = git_sync(experiment_id, git_repo)
             git_url = git_repo.remotes[0].url
 
-            for _ in tqdm.trange(proc_num):
-                if sweep_definition:
-                    sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
-                    executor.sweep(git_url, hash_commit, extra_modules, sweep_id)
-                else:
-                    executor.launch(git_url, entrypoint, hash_commit, extra_modules)
+            if proc_num == -1:
+                api = wandb.Api()
+                sweep = api.sweep(sweep_id)
+                proc_num = sweep.expected_run_count
+                if proc_num is None:
+                    raise ValueError("proc_num is None, is this a grid search?")
+
+            SEQUENTIAL = sys.gettrace() is not None
+            if SEQUENTIAL:
+                for _ in tqdm.trange(proc_num):
+                    send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url)
+            else:
+                args = [(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url)] * proc_num
+                with Pool(proc_num) as p:
+                    p.starmap(send_job, args)
+
             sys.exit()
 
     return logger
+
+
+def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url):
+    executor: DockerExecutor = executors.get_executor(url)
+    executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
+    if sweep_id:
+        executor.sweep_agent(git_url, hash_commit, extra_modules, sweep_id)
+    else:
+        executor.launch_job(git_url, entrypoint, hash_commit, extra_modules)
 
 
 def _ask_experiment_id(cluster, sweep):
@@ -324,17 +350,6 @@ def log_cmd(cmd, retr):
     print("################################################################")
     print(retr)
     print("################################################################")
-
-
-def send_jobs(entrypoint, experiment_id, extra_modules, git_url, hash_commit, proc_num, project_name, ssh_session,
-              sweep_definition, wandb_kwargs):
-    for _ in tqdm.trange(proc_num):
-        if sweep_definition:
-            sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
-            ssh_session.sweep(git_url, hash_commit, extra_modules, sweep_id)
-        else:
-            ssh_session.launch(git_url, entrypoint, hash_commit, extra_modules)
-            # ssh_command = f"bash -l
 
 
 def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
