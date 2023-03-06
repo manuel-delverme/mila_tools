@@ -1,6 +1,7 @@
 #! /bin/bash
 
 set -e
+
 echo "Using $SHELL as shell"
 
 # Module system
@@ -83,4 +84,10 @@ log "Requirements upgraded"
 log "python3 -O -u $ENTRYPOINT"
 export BUDDY_IS_DEPLOYED=1
 
-screen -d -m -S experiment bash -c "python3 -O -u $ENTRYPOINT"
+# create a script that:
+# Run the experiment and when the experiment terminates, power off the machine
+echo "python3 -O -u $ENTRYPOINT" > run.sh
+echo "sudo poweroff" >> run.sh
+
+# Run the script in a screen session
+screen -dmS experiment bash run.sh

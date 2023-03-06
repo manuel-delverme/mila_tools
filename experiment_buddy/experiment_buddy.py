@@ -284,6 +284,8 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
             git_url = git_repo.remotes[0].url
 
             if proc_num == -1:
+                if sweep_id is None:
+                    raise ValueError("proc_num is -1, but this is not a sweep")
                 api = wandb.Api()
                 sweep = api.sweep(sweep_id)
                 proc_num = sweep.expected_run_count
