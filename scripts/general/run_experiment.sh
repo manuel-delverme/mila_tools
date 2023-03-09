@@ -52,7 +52,9 @@ HASH_COMMIT=$3
 PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
 
 log "Refreshing packages..."
-sudo apt update
+cat /etc/apt/sources.list
+sudo apt-get update
+
 
 log "install -y build-essential screen"
 sudo apt-get install -y build-essential screen
