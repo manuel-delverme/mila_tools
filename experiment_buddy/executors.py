@@ -300,6 +300,7 @@ class SSHSLURMExecutor(Executor):
 
     def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
         ssh_command = f"source /etc/profile; sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
+        print(ssh_command)
         self.run(ssh_command)
 
     def _check_or_copy_wandb_key(self):
