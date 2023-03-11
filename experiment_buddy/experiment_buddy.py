@@ -131,7 +131,7 @@ class WandbWrapper:
                 else:
                     print(
                         f"not setting {name} to {str(value)}, "
-                        f"str because its already {getattr(wandb.config, name)}, "
+                        f"because its already {getattr(wandb.config, name)}, "
                         f"{type(getattr(wandb.config, name))}"
                     )
 
@@ -312,7 +312,7 @@ def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, 
     executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
     if sweep_id:
         executor.sweep_agent(git_url, hash_commit, extra_modules, sweep_id)
-        f"{git_url} {sweep_id} {hash_commit} {extra_modules}"
+
     else:
         executor.launch_job(git_url, entrypoint, hash_commit, extra_modules)
 
