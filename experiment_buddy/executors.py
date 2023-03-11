@@ -316,7 +316,7 @@ class SSHSLURMExecutor(Executor):
         self._ensure_scripts_directory(self.extra_slurm_header, self.working_dir)
 
     def _ensure_scripts_directory(self, extra_slurm_header: str, working_dir: str):
-        retr = self.ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
+        retr = self.ssh_session.run("mktemp -d -t -p /network/scratch/d/delvermm/ experiment_buddy-XXXXXXXXXX")
         remote_tmp_folder = retr.stdout.strip() + "/"
         backend = experiment_buddy.utils.get_backend(self.ssh_session, working_dir)
         scripts_dir = os.path.join(SCRIPTS_PATH, backend)

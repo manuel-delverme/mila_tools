@@ -276,8 +276,9 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
 
             sweep_id = None
             if sweep_definition:
-                sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, wandb_kwargs)
-                sweep_path = [wandb.run.entity, project_name, sweep_id]
+                entity = wandb_kwargs.get("entity", None)
+                sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, entity)
+                sweep_path = [entity, project_name, sweep_id]
                 sweep_id = "/".join(sweep_path)
 
             hash_commit = git_sync(experiment_id, git_repo)
@@ -298,7 +299,7 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
                     send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url)
             else:
                 args = [(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url)] * proc_num
-                with Pool(proc_num) as p:
+                with Pool(min(proc_num, 3)) as p:
                     p.starmap(send_job, args)
 
             sys.exit()
@@ -311,6 +312,7 @@ def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, 
     executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
     if sweep_id:
         executor.sweep_agent(git_url, hash_commit, extra_modules, sweep_id)
+        f"{git_url} {sweep_id} {hash_commit} {extra_modules}"
     else:
         executor.launch_job(git_url, entrypoint, hash_commit, extra_modules)
 
@@ -354,7 +356,7 @@ def log_cmd(cmd, retr):
     print("################################################################")
 
 
-def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
+def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, entity):
     with open(sweep_yaml, 'r') as stream:
         sweep_dict = yaml.safe_load(stream)
     sweep_dict["name"] = experiment_id
@@ -362,7 +364,7 @@ def _load_sweep(entrypoint, experiment_id, project, sweep_yaml, wandb_kwargs):
     if sweep_dict["program"] != entrypoint:
         warnings.warn(f'YAML {sweep_dict["program"]} does not match the entrypoint {entrypoint}')
 
-    sweep_id = wandb.sweep(sweep_dict, project=project, entity=wandb_kwargs.get("entity", None))
+    sweep_id = wandb.sweep(sweep_dict, project=project, entity=entity)
     return sweep_id
 
 

@@ -1,7 +1,7 @@
 #! /bin/bash
 #SBATCH --job-name=spython
-#SBATCH --output="$SCRATCH/job_output.txt"
-#SBATCH --error="$SCRATCH/job_error.txt"
+#SBATCH --output="/network/scratch/d/delvermm/job_output.txt"
+#SBATCH --error="/network/scratch/d/delvermm/job_error.txt"
 #SBATCH --time=2-00:00
 #SBATCH --mem=24GB
 #SBATCH --cpus-per-task=4
@@ -20,7 +20,6 @@ GIT_URL=$1
 ENTRYPOINT=$2
 HASH_COMMIT=$3
 EXTRA_MODULES=$(echo $4 | tr "@" " ")
-COUNT=$5
 
 for MODULE in $EXTRA_MODULES; do
   module load $MODULE
@@ -49,8 +48,4 @@ python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f http
 export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
 # TODO: the client should send the experiment_buddy version to avoid issues
 
-if [ "$COUNT" = "None" ]; then
-  wandb agent "$ENTRYPOINT"
-else
-  wandb agent --count $COUNT "$ENTRYPOINT"
-fi
+wandb agent "$ENTRYPOINT"
