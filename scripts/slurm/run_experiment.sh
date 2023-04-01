@@ -74,9 +74,6 @@ log "Upgrading requirements"
 
 # cat requirements.txt | xargs --max-args=1 --max-procs=20 python3 -m pip install --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
 
-PYTHON_VERSION=$(python3 -c "import sys; print(sys.version_info[0])")
-apt install -y "python$PYTHON_VERSION-venv"
-
 python3 -m pip cache purge
 python3 -m pip install --upgrade -r "requirements.txt" --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
 log "Requirements upgraded"
