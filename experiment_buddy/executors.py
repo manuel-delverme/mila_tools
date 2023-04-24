@@ -281,8 +281,14 @@ class AwsExecutor(SSHExecutor):
 class SSHSLURMExecutor(Executor):
     def __init__(self, url):
         ensure_torch_compatibility()
-        self.ssh_session = fabric.Connection(host=url.path, connect_timeout=10, forward_agent=True)
-        self.ssh_session.run("")
+        for trial_idx in range(3):
+            try:
+                self.ssh_session = fabric.Connection(host=url.path, connect_timeout=10, forward_agent=True)
+                self.ssh_session.run("")
+                break
+            except Exception as e:
+                print(f"Failed to connect to the remote machine, retrying in {trial_idx * 5} seconds", e)
+                time.sleep(trial_idx * 5)
         self.scritps_folder = None
         self.extra_slurm_header = None
         self.working_dir = None
@@ -351,16 +357,18 @@ class DockerExecutor(Executor):
     def launch_job(self, git_url, entrypoint, hash_commit, extra_modules):
         self.maybe_pack_archive(git_url, hash_commit)
 
-        out = subprocess.run(f"docker --context {self.context} run --name {hash_commit} --rm -it -t {self.docker_tag} sleep infinity",
-                             shell=True,
-                             capture_output=True)
+        out = subprocess.run(
+            f"docker --context {self.context} run --name {hash_commit} --rm -it -t {self.docker_tag} sleep infinity",
+            shell=True,
+            capture_output=True)
         if out.returncode != 0:
             raise RuntimeError(f"Error launching docker container: {out.stderr}")
 
         # container = self.docker_client.containers.create(self.docker_tag, "sleep infinity", detach=True)
         # docker cp archive.tar container_name:/path/to/destination
-        out = subprocess.run(f"docker --context {self.context} cp {self.repo_archive} {hash_commit}:{self.EXPERIMENT_PATH}", shell=True,
-                             capture_output=True)
+        out = subprocess.run(
+            f"docker --context {self.context} cp {self.repo_archive} {hash_commit}:{self.EXPERIMENT_PATH}", shell=True,
+            capture_output=True)
         if out.returncode != 0:
             raise RuntimeError(f"Error copying archive to docker container: {out.stderr}")
 
@@ -398,7 +406,8 @@ class DockerExecutor(Executor):
         docker_scripts_dir = os.path.join(os.path.dirname(__file__), "../scripts/docker")
         docker_file = os.path.join(docker_scripts_dir, "Dockerfile")
 
-        out = subprocess.run(f"docker --context {self.context} inspect {self.docker_tag}", shell=True, capture_output=True)
+        out = subprocess.run(f"docker --context {self.context} inspect {self.docker_tag}", shell=True,
+                             capture_output=True)
         # out = subprocess.run(f"ssh {self.context} 'docker inspect {self.docker_tag}'", shell=True, capture_output=True)
 
         if out.returncode == 0:
@@ -406,9 +415,12 @@ class DockerExecutor(Executor):
             return
 
         print("running", f"docker buildx build -t {self.docker_tag} -f {docker_file} {docker_scripts_dir}")
-        subprocess.run(f"docker --context default buildx build -t {self.docker_tag} -f {docker_file} {docker_scripts_dir}", shell=True)
+        subprocess.run(
+            f"docker --context default buildx build -t {self.docker_tag} -f {docker_file} {docker_scripts_dir}",
+            shell=True)
         print("running", f"docker --context default save {self.docker_tag} | docker --context {self.context} load")
-        subprocess.run(f"docker --context default save {self.docker_tag} | docker --context {self.context} load", shell=True)
+        subprocess.run(f"docker --context default save {self.docker_tag} | docker --context {self.context} load",
+                       shell=True)
         # print("running",
         #       f"docker --context {self.context} save {self.docker_tag} | bzip2 | pv | ssh {self.context} 'bunzip2 | docker load'")
         # out = subprocess.run(f"docker save {self.docker_tag} | bzip2 | pv | ssh {self.context} 'bunzip2 | docker load'", shell=True,
