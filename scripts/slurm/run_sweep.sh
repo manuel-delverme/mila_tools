@@ -1,12 +1,8 @@
 #! /bin/bash
 #SBATCH --job-name=spython
-#SBATCH --output="/network/scratch/d/delvermm/job_output.txt"
-#SBATCH --error="/network/scratch/d/delvermm/job_error.txt"
-#SBATCH --time=2-00:00
+#SBATCH --time=12-00:00
 #SBATCH --mem=24GB
 #SBATCH --cpus-per-task=4
-#SBATCH --gres=gpu:1
-#SBATCH --get-user-env=L
 set -e
 
 function log() {
@@ -16,11 +12,13 @@ function log() {
 source /etc/profile
 log "Refreshing modules..."
 module purge
+
 GIT_URL=$1
 ENTRYPOINT=$2
 HASH_COMMIT=$3
 EXTRA_MODULES=$(echo $4 | tr "@" " ")
 
+# /tmp/experiment_buddy-CplQ5vtnzn//run_sweep.sh  delvermm/option-base/ukjy4sv6 094e0a0ecf6b7dc444cceb361c8cca7f9c843a75 python/3.7@pytorch/1.7
 for MODULE in $EXTRA_MODULES; do
   module load $MODULE
 done

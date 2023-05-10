@@ -21,7 +21,6 @@ import yaml
 
 import experiment_buddy.utils
 from experiment_buddy import executors
-from experiment_buddy.executors import DockerExecutor
 
 try:
     import torch
@@ -308,7 +307,7 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
 
 
 def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url):
-    executor: DockerExecutor = executors.get_executor(url)
+    executor: executors.SSHSLURMExecutor = executors.get_executor(url)
     executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
     if sweep_id:
         executor.sweep_agent(git_url, hash_commit, extra_modules, sweep_id)
