@@ -1,6 +1,5 @@
 import argparse
 import datetime
-import enum
 import logging
 import os
 import subprocess
@@ -295,9 +294,11 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
             SEQUENTIAL = sys.gettrace() is not None
             if SEQUENTIAL:
                 for _ in tqdm.trange(proc_num):
-                    send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url)
+                    send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id,
+                             url)
             else:
-                args = [(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url)] * proc_num
+                args = [(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id,
+                         url)] * proc_num
                 with Pool(min(proc_num, 3)) as p:
                     p.starmap(send_job, args)
 

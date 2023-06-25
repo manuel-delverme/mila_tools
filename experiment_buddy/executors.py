@@ -283,7 +283,7 @@ class SSHSLURMExecutor(Executor):
         ensure_torch_compatibility()
         for trial_idx in range(3):
             try:
-                self.ssh_session = fabric.Connection(host=url.path, connect_timeout=10, forward_agent=True)
+                self.ssh_session = fabric.Connection(host=url.path, connect_timeout=10, forward_agent=False)
                 self.ssh_session.run("")
                 break
             except Exception as e:
