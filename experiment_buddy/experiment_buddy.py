@@ -200,7 +200,8 @@ class WandbWrapper:
 
 
 def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_kwargs=None,
-           extra_slurm_headers="", extra_modules=None, disabled=False, wandb_run_name=None) -> WandbWrapper:
+           extra_slurm_headers="", extra_modules=None, disabled=False, wandb_run_name=None,
+           conda_env="base") -> WandbWrapper:
     """
     :param url: The host to deploy to.
     :param sweep_definition: Either a yaml file or a string containing the sweep id to resume from
@@ -295,10 +296,10 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
             if SEQUENTIAL:
                 for _ in tqdm.trange(proc_num):
                     send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id,
-                             url)
+                             url, conda_env)
             else:
                 args = [(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id,
-                         url)] * proc_num
+                         url, conda_env)] * proc_num
                 with Pool(min(proc_num, 3)) as p:
                     p.starmap(send_job, args)
 
@@ -307,7 +308,7 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     return logger
 
 
-def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url):
+def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, hash_commit, sweep_id, url, conda_env):
     executor: executors.SSHSLURMExecutor = executors.get_executor(url)
     executor.setup_remote(extra_slurm_headers, git_repo.working_dir)
     if sweep_id:

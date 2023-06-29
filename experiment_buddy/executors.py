@@ -104,7 +104,7 @@ class SSHExecutor(Executor):
     def put(self, local_path, remote_path):
         return self.ssh_session.put(local_path, remote_path)
 
-    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env="base"):
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {conda_env} {extra_modules}"
         print(ssh_command)
         self.ssh_session.run(ssh_command)
@@ -299,7 +299,7 @@ class SSHSLURMExecutor(Executor):
     def put(self, local_path, remote_path):
         return self.ssh_session.put(local_path, remote_path)
 
-    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env="base"):
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {conda_env} {extra_modules}"
         self.ssh_session.run(ssh_command)
         time.sleep(1)
@@ -354,7 +354,7 @@ class DockerExecutor(Executor):
         environment.update({"DOCKER_CONTEXT": self.context})
         self.docker_client.containers.run(image, cmd, environment=environment, remove=True)
 
-    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env="base"):
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env):
         raise NotImplementedError
         self.maybe_pack_archive(git_url, hash_commit)
 
