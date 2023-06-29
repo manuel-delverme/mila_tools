@@ -314,7 +314,7 @@ def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, 
         executor.sweep_agent(git_url, hash_commit, extra_modules, sweep_id)
 
     else:
-        executor.launch_job(git_url, entrypoint, hash_commit, extra_modules)
+        executor.launch_job(git_url, entrypoint, hash_commit, extra_modules, conda_env=conda_env)
 
 
 def _ask_experiment_id(cluster, sweep):
