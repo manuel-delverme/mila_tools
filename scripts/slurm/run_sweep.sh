@@ -16,7 +16,8 @@ module purge
 GIT_URL=$1
 ENTRYPOINT=$2
 HASH_COMMIT=$3
-EXTRA_MODULES=$(echo $4 | tr "@" " ")
+CONDA_ENV=$4
+EXTRA_MODULES=$(echo $5 | tr "@" " ")
 
 # /tmp/experiment_buddy-CplQ5vtnzn//run_sweep.sh  delvermm/option-base/ukjy4sv6 094e0a0ecf6b7dc444cceb361c8cca7f9c843a75 python/3.7@pytorch/1.7
 for MODULE in $EXTRA_MODULES; do
@@ -32,11 +33,18 @@ cd $FOLDER || exit
 git checkout $HASH_COMMIT
 log "pwd is now $(pwd)"
 
+if [ ! -z "$CONDA_ENV" ]; then
+  module load anaconda
+  log "Using conda env $CONDA_ENV"
+  conda activate $CONDA_ENV
+fi
+
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
-log "Setting up venv @ $SLURM_TMPDIR/venv..."
+# log "Setting up venv @ $SLURM_TMPDIR/venv..."
 
 python3 -m venv --system-site-packages "$SLURM_TMPDIR/venv"
 # shellcheck disable=SC1090
+
 source "$SLURM_TMPDIR/venv/bin/activate"
 python3 -m pip install --upgrade pip
 

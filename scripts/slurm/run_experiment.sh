@@ -4,7 +4,6 @@ set -e
 source /etc/profile
 echo "Using $SHELL as shell"
 
-# Module system
 function log() {
   echo -e "\e[32m\"[DEPLOY LOG] $*\"\e[0m"
   echo -e "[DEPLOY LOG] $*" >>$HOME/last_buddy_run_experiment_log.txt
@@ -72,8 +71,6 @@ log "Using shared venv @ $HOME/venv"
 log "Upgrading pip"
 python3 -m pip install --upgrade pip
 log "Upgrading requirements"
-
-# cat requirements.txt | xargs --max-args=1 --max-procs=20 python3 -m pip install --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
 
 if [ ! -z "$CONDA_ENV" ]; then
   module load anaconda

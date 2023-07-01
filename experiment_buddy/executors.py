@@ -73,7 +73,7 @@ class Executor(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
         raise NotImplementedError
 
 
@@ -109,8 +109,7 @@ class SSHExecutor(Executor):
         print(ssh_command)
         self.ssh_session.run(ssh_command)
 
-    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
-        ssh_command = f"sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
         raise NotImplementedError
 
     def check_or_copy_wandb_key(self):
@@ -272,8 +271,8 @@ class AwsExecutor(SSHExecutor):
         self.working_dir = working_dir
         self._ensure_scripts_directory(self.working_dir)
 
-    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
-        ssh_command = f"bash -l {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
+        ssh_command = f"bash -l {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {conda_env} {extra_modules}"
         print(ssh_command)
         self.ssh_session.run(ssh_command)
 
@@ -305,8 +304,8 @@ class SSHSLURMExecutor(Executor):
         self.ssh_session.run(ssh_command)
         time.sleep(1)
 
-    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id):
-        ssh_command = f"source /etc/profile; sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {extra_modules}"
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
+        ssh_command = f"source /etc/profile; sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {conda_env} {extra_modules}"
         print(ssh_command)
         self.run(ssh_command)
 
