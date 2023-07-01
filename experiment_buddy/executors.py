@@ -301,6 +301,7 @@ class SSHSLURMExecutor(Executor):
 
     def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {conda_env} {extra_modules}"
+        print("Running", ssh_command)
         self.ssh_session.run(ssh_command)
         time.sleep(1)
 

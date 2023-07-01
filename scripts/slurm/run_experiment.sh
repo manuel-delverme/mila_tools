@@ -76,6 +76,7 @@ log "Upgrading requirements"
 # cat requirements.txt | xargs --max-args=1 --max-procs=20 python3 -m pip install --exists-action s -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html | grep -v "Requirement already satisfied"
 
 if [ ! -z "$CONDA_ENV" ]; then
+  module load anaconda
   log "Using conda env $CONDA_ENV"
   conda activate $CONDA_ENV
 fi
