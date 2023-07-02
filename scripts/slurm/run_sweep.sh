@@ -28,15 +28,15 @@ FOLDER=$SLURM_TMPDIR/src/
 
 log "downloading source code from $GIT_URL to $FOLDER"
 # https://stackoverflow.com/questions/7772190/passing-ssh-options-to-git-clone/28527476#28527476
-GIT_SSH_COMMAND="ssh -vv -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone $GIT_URL $FOLDER/
+GIT_SSH_COMMAND="ssh -v -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone $GIT_URL $FOLDER/
 cd $FOLDER || exit
 git checkout $HASH_COMMIT
 log "pwd is now $(pwd)"
 
+log "trying to use conda env $CONDA_ENV"
 if [ ! -z "$CONDA_ENV" ]; then
-  module load anaconda
-  log "Using conda env $CONDA_ENV"
-  conda activate $CONDA_ENV
+  module load anaconda/3 || true
+  conda activate $CONDA_ENV || true
 fi
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
