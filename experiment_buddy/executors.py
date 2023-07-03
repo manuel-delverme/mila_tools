@@ -124,6 +124,7 @@ class SSHExecutor(Executor):
             result = self.run('mktemp -p . -d')
             experiment_folder = result.stdout.strip()
             self._pull_experiment(git_url, hash_commit, experiment_folder)
+            return experiment_folder
 
     def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
         raise NotImplementedError
