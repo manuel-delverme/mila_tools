@@ -102,7 +102,10 @@ class SSHExecutor(Executor):
         self.working_dir = None
 
     def run(self, cmd) -> Result:
-        return self.ssh_session.run(cmd)
+        print("Running:\n", cmd)
+        out = self.ssh_session.run(cmd)
+        print(out)
+        return out
 
     def put(self, local_path, remote_path):
         return self.ssh_session.put(local_path, remote_path)
@@ -119,12 +122,13 @@ class SSHExecutor(Executor):
             self.run(f'git checkout {hash_commit}')
 
     def remote_checkout(self, git_url, hash_commit):
-        self.run('mkdir -p $HOME/experiments/')
-        with self.ssh_session.cd('$HOME/experiments/'):
+        experiments_folder = '$HOME/experiments/'
+        self.run(f'mkdir -p {experiments_folder}')
+        with self.ssh_session.cd(experiments_folder):
             result = self.run('mktemp -p . -d')
             experiment_folder = result.stdout.strip()
             self._pull_experiment(git_url, hash_commit, experiment_folder)
-            return experiment_folder
+            return f"{experiments_folder}/{experiment_folder}"
 
     def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
         raise NotImplementedError
