@@ -257,7 +257,7 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         logger = WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
     else:
-        experiment_id = wandb_run_name if wandb_run_name is not None else _ask_experiment_id(url, sweep_definition)
+        experiment_id = wandb_run_name if wandb_run_name is not None else ask_experiment_id(url, sweep_definition)
         print(f"experiment_id: {experiment_id}")
 
         if local_run:
@@ -318,7 +318,7 @@ def send_job(entrypoint, extra_modules, extra_slurm_headers, git_repo, git_url, 
         executor.launch_job(git_url, entrypoint, hash_commit, extra_modules, conda_env=conda_env)
 
 
-def _ask_experiment_id(cluster, sweep):
+def ask_experiment_id(cluster, sweep):
     title = f'{"[CLUSTER" if cluster else "[LOCAL"}'
     if sweep:
         title = f"{title}-SWEEP"

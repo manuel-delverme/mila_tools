@@ -1,7 +1,9 @@
 import abc
+import logging
 import os
 import re
 import subprocess
+import tarfile
 import tempfile
 import time
 import urllib.parse
@@ -12,7 +14,7 @@ from typing import Optional
 import boto3
 import docker
 import fabric
-from invoke import UnexpectedExit
+from invoke import UnexpectedExit, Result
 from paramiko.ssh_exception import SSHException
 
 import experiment_buddy.utils
@@ -20,11 +22,12 @@ import experiment_buddy.utils
 wandb_escape = "^"
 tb = tensorboard = None
 if os.path.exists("buddy_scripts/"):
-    SCRIPTS_PATH = "buddy_scripts/"
+    SCRIPTS_FOLDER = "buddy_scripts/"
 else:
-    SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
+    SCRIPTS_FOLDER = os.path.join(os.path.dirname(__file__), "../scripts/")
 ARTIFACTS_PATH = "runs/"
 DEFAULT_WANDB_KEY = os.path.join(os.environ["HOME"], ".netrc")
+GIT_CLONE_PREFIX = "GIT_SSH_COMMAND=\"ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no\""
 
 
 def ensure_torch_compatibility():
@@ -78,7 +81,7 @@ class Executor(abc.ABC):
 
 
 class SSHExecutor(Executor):
-    def __init__(self, url):
+    def __init__(self, url: urllib.parse.ParseResult):
         try:
             self.ssh_session = fabric.Connection(host=url.hostname, connect_timeout=10, forward_agent=True)
             for _ in range(10):
@@ -98,7 +101,7 @@ class SSHExecutor(Executor):
         self.scripts_folder = None
         self.working_dir = None
 
-    def run(self, cmd):
+    def run(self, cmd) -> Result:
         return self.ssh_session.run(cmd)
 
     def put(self, local_path, remote_path):
@@ -108,6 +111,19 @@ class SSHExecutor(Executor):
         ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {conda_env} {extra_modules}"
         print(ssh_command)
         self.ssh_session.run(ssh_command)
+
+    def _pull_experiment(self, git_url, hash_commit, folder):
+        logging.info(f"downloading source code from {git_url} to {folder}")
+        self.run(f'{GIT_CLONE_PREFIX} git clone {git_url} {folder}/')
+        with self.ssh_session.cd(folder):
+            self.run(f'git checkout {hash_commit}')
+
+    def remote_checkout(self, git_url, hash_commit):
+        self.run('mkdir -p $HOME/experiments/')
+        with self.ssh_session.cd('$HOME/experiments/'):
+            result = self.run('mktemp -p . -d')
+            experiment_folder = result.stdout.strip()
+            self._pull_experiment(git_url, hash_commit, experiment_folder)
 
     def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
         raise NotImplementedError
@@ -140,13 +156,14 @@ class SSHExecutor(Executor):
 
         retr = self.ssh_session.run("mktemp -d -t experiment_buddy-XXXXXXXXXX")
         remote_tmp_folder = retr.stdout.strip() + "/"
-        # self.ssh_session.put(f'{SCRIPTS_PATH}/common/common.sh', remote_tmp_folder)
 
-        backend = experiment_buddy.utils.get_backend(self.ssh_session, working_dir)
-        scripts_dir = os.path.join(SCRIPTS_PATH, backend)
+        # Create temp local folder
+        with tempfile.TemporaryDirectory() as scripts_folder:
+            with tarfile.open(f'{scripts_folder}/scripts_folder.tar.gz', 'w:gz') as tar:
+                tar.add(SCRIPTS_FOLDER, arcname=os.path.basename(SCRIPTS_FOLDER))
 
-        for file in os.listdir(scripts_dir):
-            self.ssh_session.put(os.path.join(scripts_dir, file), remote_tmp_folder)
+            self.ssh_session.put(f'{scripts_folder}/scripts_folder.tar.gz', remote_tmp_folder + "scripts_folder.tar.gz")
+            self.ssh_session.run(f'tar -xzf {remote_tmp_folder}scripts_folder.tar.gz -C {remote_tmp_folder}')
 
         self.scripts_folder = remote_tmp_folder
 
@@ -326,7 +343,7 @@ class SSHSLURMExecutor(Executor):
         retr = self.ssh_session.run("mktemp -d -t -p /network/scratch/d/delvermm/ experiment_buddy-XXXXXXXXXX")
         remote_tmp_folder = retr.stdout.strip() + "/"
         backend = experiment_buddy.utils.get_backend(self.ssh_session, working_dir)
-        scripts_dir = os.path.join(SCRIPTS_PATH, backend)
+        scripts_dir = os.path.join(SCRIPTS_FOLDER, backend)
 
         for file in os.listdir(scripts_dir):
             if extra_slurm_header and file in ("run_sweep.sh", "srun_python.sh"):
