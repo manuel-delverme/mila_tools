@@ -360,6 +360,63 @@ class SSHSLURMExecutor(Executor):
         self.scripts_folder = remote_tmp_folder
 
 
+class HydraExecutor(Executor):
+    def __init__(self, url):
+        ensure_torch_compatibility()
+        for trial_idx in range(3):
+            try:
+                self.ssh_session = fabric.Connection(host=url.hostname, connect_timeout=10, forward_agent=False)
+                self.ssh_session.run("")
+                break
+            except Exception as e:
+                print(f"Failed to connect to the remote machine, retrying in {trial_idx * 5} seconds", e)
+                time.sleep(trial_idx * 5)
+        self.scritps_folder = None
+        self.extra_slurm_header = None
+        self.working_dir = None
+
+    def run(self, cmd):
+        return self.ssh_session.run(cmd)
+
+    def put(self, local_path, remote_path):
+        return self.ssh_session.put(local_path, remote_path)
+
+    def launch_job(self, git_url, entrypoint, hash_commit, extra_modules, conda_env):
+        ssh_command = f"bash -l {self.scripts_folder}/run_experiment.sh {git_url} {entrypoint} {hash_commit} {conda_env} {extra_modules}"
+        print("Running", ssh_command)
+        self.ssh_session.run(ssh_command)
+        time.sleep(1)
+
+    def sweep_agent(self, git_url, hash_commit, extra_modules, sweep_id, conda_env):
+        ssh_command = f"source /etc/profile; sbatch {self.scripts_folder}/run_sweep.sh {git_url} {sweep_id} {hash_commit} {conda_env} {extra_modules}"
+        print(ssh_command)
+        self.run(ssh_command)
+
+    def _check_or_copy_wandb_key(self):
+        try:
+            self.ssh_session.run("test -f $HOME/.netrc")
+        except UnexpectedExit:
+            print(f"Wandb api key not found in {self.ssh_session.host}. Copying it from {DEFAULT_WANDB_KEY}")
+            self.ssh_session.put(DEFAULT_WANDB_KEY, ".netrc")
+
+    def setup_remote(self, extra_slurm_header: str, working_dir: str):
+        self.extra_slurm_header = extra_slurm_header
+        self.working_dir = working_dir
+        self._check_or_copy_wandb_key()
+        self._ensure_scripts_directory(self.extra_slurm_header, self.working_dir)
+
+    def _ensure_scripts_directory(self, extra_slurm_header: str, working_dir: str):
+        retr = self.ssh_session.run("mktemp -d -t -p /network/scratch/d/delvermm/ experiment_buddy-XXXXXXXXXX")
+        remote_tmp_folder = retr.stdout.strip() + "/"
+
+        scripts_dir = os.path.join(SCRIPTS_FOLDER, "hydra")
+
+        for file in os.listdir(scripts_dir):
+            self.ssh_session.put(os.path.join(scripts_dir, file), remote_tmp_folder)
+
+        self.scripts_folder = remote_tmp_folder
+
+
 class DockerExecutor(Executor):
     EXPERIMENT_PATH = "/experiment"
 
@@ -468,6 +525,8 @@ def get_executor(url):
         executor = HetznerExecutor(url)
     elif url.scheme == "aws":
         executor = AwsExecutor(url)
+    elif url.scheme == "hydra":
+        executor = HydraExecutor(url)
     elif url.scheme == "local":
         raise NotImplementedError
     elif url.scheme == "docker":
