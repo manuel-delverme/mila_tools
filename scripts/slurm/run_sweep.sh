@@ -46,7 +46,8 @@ python3 -m venv --system-site-packages "$SLURM_TMPDIR/venv"
 # shellcheck disable=SC1090
 
 source "$SLURM_TMPDIR/venv/bin/activate"
-python3 -m pip install --upgrade pip
+# python3 -m pip install --upgrade pip
+python3 -m pip install pip==22.2
 
 log "Downloading modules"
 python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html --use-deprecated=legacy-resolver
