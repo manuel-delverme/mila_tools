@@ -11,8 +11,6 @@ import uuid
 import warnings
 from typing import Optional
 
-import boto3
-import docker
 import fabric
 from invoke import UnexpectedExit, Result
 from paramiko.ssh_exception import SSHException
@@ -211,6 +209,7 @@ class HetznerExecutor(SSHExecutor):
 
 class AwsExecutor(SSHExecutor):
     def __init__(self, url):
+        import boto3
         requested_machine = url.hostname
 
         # Create an EC2 client
@@ -421,6 +420,7 @@ class DockerExecutor(Executor):
     EXPERIMENT_PATH = "/experiment"
 
     def __init__(self, url):
+        import docker
         self.docker_client = docker.from_env()
         self.docker_tag = f"base-cpu:latest"
         self.context = url.hostname or "default"

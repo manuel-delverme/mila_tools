@@ -31,7 +31,6 @@ else:
 
 logging.basicConfig(level=logging.INFO)
 
-wandb_escape = "^"
 hyperparams: Optional[Dict] = None
 tb = tensorboard = None
 if os.path.exists("buddy_scripts/"):
@@ -63,13 +62,11 @@ def register_defaults(config_params, allow_overwrite=False):
     parser.add_argument('_ignored', nargs='*')
 
     for k, v in config_params.items():
-        if k.startswith(wandb_escape):
-            raise NameError(f"{wandb_escape} is a reserved prefix")
         if _is_valid_hyperparam(k, v):
-            parser.add_argument(f"--{k}", f"--^{k}", type=type(v), default=v)
+            parser.add_argument(f"--{k}", type=type(v), default=v)
             if "_" in k:
                 k = k.replace("_", "-")
-                parser.add_argument(f"--{k}", f"--^{k}", type=type(v), default=v)
+                parser.add_argument(f"--{k}", type=type(v), default=v)
 
     try:
         parsed = parser.parse_args()
@@ -79,7 +76,6 @@ def register_defaults(config_params, allow_overwrite=False):
         raise e
 
     for k, v in vars(parsed).items():
-        k = k.lstrip(wandb_escape)
         config_params[k] = v
 
     hyperparams = config_params.copy()
@@ -121,11 +117,11 @@ class WandbWrapper:
                         __v = getattr(module, __k)
                         register_param(__k, __v, prefix=module.__name__.replace(".", "_"))
             else:
-                name = prefix + wandb_escape + name
+                name = prefix + name
                 # if the parameter was not set by a sweep
-                if not name in wandb.config._items:
+                if name not in wandb.config._items:
                     print(f"setting {name}={str(value)}")
-                    setattr(wandb.config, name, str(value))
+                    setattr(wandb.config, name, value)
                 else:
                     print(
                         f"not setting {name} to {str(value)}, "
