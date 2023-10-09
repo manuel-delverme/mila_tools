@@ -41,44 +41,44 @@ ARTIFACTS_PATH = "runs/"
 DEFAULT_WANDB_KEY = os.path.join(os.environ["HOME"], ".netrc")
 
 
-def register(config_params):
-    warnings.warn("Use register_defaults() instead")
-    return register_defaults(config_params)
+# def register(config_params):
+#     warnings.warn("Use register_defaults() instead")
+#     return register_defaults(config_params)
 
 
-def register_defaults(config_params, allow_overwrite=False):
-    global hyperparams
-    # TODO: fails on nested config object
-    if allow_overwrite:
-        hyperparams = None
-
-    if hyperparams is not None:
-        raise RuntimeError("refusing to overwrite registered parameters")
-
-    if isinstance(config_params, argparse.Namespace):
-        raise Exception("Need a dict, use var() or locals()")
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('_ignored', nargs='*')
-
-    for k, v in config_params.items():
-        if _is_valid_hyperparam(k, v):
-            parser.add_argument(f"--{k}", type=type(v), default=v)
-            if "_" in k:
-                k = k.replace("_", "-")
-                parser.add_argument(f"--{k}", type=type(v), default=v)
-
-    try:
-        parsed = parser.parse_args()
-    except TypeError as e:
-        print("Type mismatch between registered hyperparameters defaults and actual values,"
-              " it might be a float argument that was passed as an int (e.g. lr=1 rather than lr=1.0) but set as a float (--lr 0.1)")
-        raise e
-
-    for k, v in vars(parsed).items():
-        config_params[k] = v
-
-    hyperparams = config_params.copy()
+# def register_defaults(config_params, allow_overwrite=False):
+#     global hyperparams
+#     # TODO: fails on nested config object
+#     if allow_overwrite:
+#         hyperparams = None
+#
+#     if hyperparams is not None:
+#         raise RuntimeError("refusing to overwrite registered parameters")
+#
+#     if isinstance(config_params, argparse.Namespace):
+#         raise Exception("Need a dict, use var() or locals()")
+#
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument('_ignored', nargs='*')
+#
+#     for k, v in config_params.items():
+#         if _is_valid_hyperparam(k, v):
+#             parser.add_argument(f"--{k}", type=type(v), default=v)
+#             if "_" in k:
+#                 k = k.replace("_", "-")
+#                 parser.add_argument(f"--{k}", type=type(v), default=v)
+#
+#     try:
+#         parsed = parser.parse_args()
+#     except TypeError as e:
+#         print("Type mismatch between registered hyperparameters defaults and actual values,"
+#               " it might be a float argument that was passed as an int (e.g. lr=1 rather than lr=1.0) but set as a float (--lr 0.1)")
+#         raise e
+#
+#     for k, v in vars(parsed).items():
+#         config_params[k] = v
+#
+#     hyperparams = config_params.copy()
 
 
 def _is_valid_hyperparam(key, value):
@@ -92,107 +92,16 @@ def _is_valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    def __init__(self, experiment_id, debug, wandb_kwargs, local_tensorboard=None):
-        """
-        project_name is the git root folder name
-        """
-        # Calling wandb.method is equivalent to calling self.run.method
-        # I'd rather to keep explicit tracking of which run this object is following
+    def __init__(self, experiment_id, debug, wandb_kwargs, local_tensorboard):
         wandb_kwargs["mode"] = wandb_kwargs.get("mode", "offline" if debug else "online")
         if not debug:
             wandb_kwargs["settings"] = wandb_kwargs.get("settings", wandb.Settings(start_method="fork"))
+        wandb_kwargs["tensorboard"] = local_tensorboard
+
         self.run = wandb.init(name=experiment_id, **wandb_kwargs)
 
-        self.tensorboard = local_tensorboard
-        self.objects_path = os.path.join(ARTIFACTS_PATH, "objects/", self.run.name)
-        os.makedirs(self.objects_path, exist_ok=True)
-
-        def register_param(name, value, prefix=""):
-            if not _is_valid_hyperparam(name, value):
-                return
-
-            if name == "_extra_modules_":
-                for module in value:
-                    for __k in dir(module):
-                        __v = getattr(module, __k)
-                        register_param(__k, __v, prefix=module.__name__.replace(".", "_"))
-            else:
-                name = prefix + name
-                # if the parameter was not set by a sweep
-                if name not in wandb.config._items:
-                    print(f"setting {name}={str(value)}")
-                    setattr(wandb.config, name, value)
-                else:
-                    print(
-                        f"not setting {name} to {str(value)}, "
-                        f"because its already {getattr(wandb.config, name)}, "
-                        f"{type(getattr(wandb.config, name))}"
-                    )
-
-        for k, v in hyperparams.items():
-            register_param(k, v)
-
-    def add_scalar(self, tag: str, scalar_value: float, global_step: Optional[int] = None):
-        if scalar_value != scalar_value:
-            warnings.warn(f"{tag} is {scalar_value} at {global_step} :(")
-
-        scalar_value = float(scalar_value)  # silently remove extra data such as torch gradients
-        self.run.log({tag: scalar_value}, step=global_step, commit=False)
-        if self.tensorboard:
-            self.tensorboard.add_scalar(tag, scalar_value, global_step=global_step)
-
-    def add_scalars(self, dict_of_scalars: Dict[str, float], global_step: int = None, prefix: str = ""):
-        for k, v in dict_of_scalars.items():
-            self.add_scalar(prefix + k, v, global_step)
-
-    def add_figure(self, tag, figure, global_step=None, close=True):
-        self.run.log({tag: figure}, global_step)
-        if close:
-            plt.close(figure)
-
-        if self.tensorboard:
-            self.tensorboard.add_figure(tag, figure, global_step=None, close=True)
-
-    @staticmethod
-    def add_histogram(tag, values, global_step=None):
-        if len(values) <= 2:
-            raise ValueError("histogram requires at least 3 values")
-
-        if isinstance(values, (tuple, list)) and len(values) == 2:
-            wandb.log({tag: wandb.Histogram(np_histogram=values)}, step=global_step, commit=False)
-        else:
-            wandb.log({tag: wandb.Histogram(values)}, step=global_step, commit=False)
-
-    def plot(self, tag, values, global_step=None):
-        wandb.log({tag: wandb.Image(values)}, step=global_step, commit=False)
-        plt.close()
-
-    def add_object(self, tag, obj, global_step=None):
-        if not TORCH_ENABLED:
-            raise NotImplementedError
-
-        local_path = os.path.join(self.run.dir, f"{tag}-{global_step}.pt")
-        with open(local_path, "wb") as fout:
-            try:
-                torch.save(obj, fout, pickle_module=cloudpickle)
-            except Exception as e:
-                raise e
-
-        self.run.save(local_path, base_path=self.run.dir)
-        return local_path
-
-    def watch(self, *args, **kwargs):
-        self.run.watch(*args, **kwargs)
-
-    def close(self):
-        pass
-
-    def record(self, tag, value, global_step=None, exclude=None):
-        # Let wandb figure it out.
-        self.run.log({tag: value}, step=global_step, commit=False)
-
-    def dump(self, step=None):
-        self.run.log({}, step=step, commit=True)
+    def log(self, *args, **kwargs):
+        self.run.log(*args, **kwargs)
 
 
 def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_kwargs=None,
