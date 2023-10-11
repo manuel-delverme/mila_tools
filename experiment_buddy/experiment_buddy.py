@@ -31,7 +31,6 @@ else:
 
 logging.basicConfig(level=logging.INFO)
 
-hyperparams: Optional[Dict] = None
 tb = tensorboard = None
 if os.path.exists("buddy_scripts/"):
     SCRIPTS_PATH = "buddy_scripts/"
@@ -92,11 +91,10 @@ def _is_valid_hyperparam(key, value):
 
 
 class WandbWrapper:
-    def __init__(self, experiment_id, debug, wandb_kwargs, local_tensorboard):
+    def __init__(self, experiment_id, debug, wandb_kwargs):
         wandb_kwargs["mode"] = wandb_kwargs.get("mode", "offline" if debug else "online")
         if not debug:
             wandb_kwargs["settings"] = wandb_kwargs.get("settings", wandb.Settings(start_method="fork"))
-        wandb_kwargs["tensorboard"] = local_tensorboard
 
         self.run = wandb.init(name=experiment_id, **wandb_kwargs)
 
@@ -142,25 +140,25 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     project_name = experiment_buddy.utils.get_project_name(git_repo)
 
     # if local_run and sweep_definition:
-    wandb_kwargs = {'project': project_name, **wandb_kwargs}
-    common_kwargs = {'debug': debug, 'wandb_kwargs': wandb_kwargs, }
+    wandb_kwargs = dict(project=project_name, **wandb_kwargs)
+    common_kwargs = dict(debug=debug, wandb_kwargs=wandb_kwargs)
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
 
     if disabled:
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard", "DISABLED", dtm)
         wandb_kwargs["mode"] = "disabled"
-        logger = WandbWrapper(f"buddy_disabled_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+        logger = WandbWrapper(f"buddy_disabled_{dtm}", **common_kwargs)
     elif running_on_cluster:
         print("using wandb")
         experiment_id = f"{git_repo.head.commit.message.strip()}"
         jid = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
         jid += os.environ.get("SLURM_JOB_ID", "")
         # TODO: turn into a big switch based on scheduler
-        logger = WandbWrapper(f"{experiment_id}_{jid}", local_tensorboard=None, **common_kwargs)
+        logger = WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
     elif debug:
         experiment_id = "DEBUG_RUN"
         tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-        logger = WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+        logger = WandbWrapper(f"{experiment_id}_{dtm}", **common_kwargs)
     else:
         experiment_id = wandb_run_name if wandb_run_name is not None else ask_experiment_id(url, sweep_definition)
         print(f"experiment_id: {experiment_id}")
@@ -172,8 +170,8 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
                     f"SLURM_JOB_ID is {os.environ.get('SLURM_JOB_ID', 'KeyError')}\n"
                     f"BUDDY_IS_DEPLOYED is {os.environ.get('BUDDY_IS_DEPLOYED', 'KeyError')}\n"
                 )
-            tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
-            return WandbWrapper(f"{experiment_id}_{dtm}", local_tensorboard=_setup_tb(logdir=tb_dir), **common_kwargs)
+
+            return WandbWrapper(f"{experiment_id}_{dtm}", **common_kwargs)
         else:
             entrypoint = os.path.relpath(sys.argv[0], git_repo.working_dir)
             extra_modules = "@".join(extra_modules)
@@ -247,11 +245,6 @@ def ask_experiment_id(cluster, sweep):
     if cluster:
         experiment_id = f"[CLUSTER] {experiment_id}"
     return experiment_id
-
-
-def _setup_tb(logdir):
-    print("http://localhost:6006")
-    return tensorboardX.SummaryWriter(logdir=logdir)
 
 
 def log_cmd(cmd, retr):
