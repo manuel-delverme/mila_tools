@@ -157,7 +157,6 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
         logger = WandbWrapper(f"{experiment_id}_{jid}", **common_kwargs)
     elif debug:
         experiment_id = "DEBUG_RUN"
-        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard/", experiment_id, dtm)
         logger = WandbWrapper(f"{experiment_id}_{dtm}", **common_kwargs)
     else:
         experiment_id = wandb_run_name if wandb_run_name is not None else ask_experiment_id(url, sweep_definition)
