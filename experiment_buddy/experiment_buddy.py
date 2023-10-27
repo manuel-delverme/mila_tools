@@ -145,7 +145,6 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
 
     if disabled:
-        tb_dir = os.path.join(git_repo.working_dir, ARTIFACTS_PATH, "tensorboard", "DISABLED", dtm)
         wandb_kwargs["mode"] = "disabled"
         logger = WandbWrapper(f"buddy_disabled_{dtm}", **common_kwargs)
     elif running_on_cluster:
