@@ -36,7 +36,11 @@ log "pwd is now $(pwd)"
 log "trying to use conda env $CONDA_ENV"
 if [ ! -z "$CONDA_ENV" ]; then
   module load anaconda/3 || true
-  conda activate $CONDA_ENV || true
+  if conda activate "$CONDA_ENV"; then
+    echo "Successfully activated conda environment '$CONDA_ENV'"
+  else
+    echo "Failed to activate conda environment '$CONDA_ENV'"
+  fi
 fi
 
 # Set up virtualenv in $SLURM_TMPDIR. Will get blown up at job end.
