@@ -137,10 +137,10 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     except git.InvalidGitRepositoryError:
         raise ValueError(f"Could not find a git repo")
 
-    project_name = experiment_buddy.utils.get_project_name(git_repo)
+    if "project" not in wandb_kwargs:
+        project_name = experiment_buddy.utils.get_project_name(git_repo)
+        wandb_kwargs["project"] = project_name
 
-    # if local_run and sweep_definition:
-    wandb_kwargs = dict(project=project_name, **wandb_kwargs)
     common_kwargs = dict(debug=debug, wandb_kwargs=wandb_kwargs)
     dtm = datetime.datetime.now().strftime("%b%d_%H-%M-%S")
 
