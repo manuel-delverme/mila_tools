@@ -1,4 +1,3 @@
-import argparse
 import datetime
 import logging
 import os
@@ -7,12 +6,8 @@ import sys
 import types
 import warnings
 from multiprocessing import Pool
-from typing import Dict, Optional
 
-import cloudpickle
 import git
-import matplotlib.pyplot as plt
-import tensorboardX
 import tqdm
 import wandb
 import wandb.cli
@@ -38,46 +33,6 @@ else:
     SCRIPTS_PATH = os.path.join(os.path.dirname(__file__), "../scripts/")
 ARTIFACTS_PATH = "runs/"
 DEFAULT_WANDB_KEY = os.path.join(os.environ["HOME"], ".netrc")
-
-
-# def register(config_params):
-#     warnings.warn("Use register_defaults() instead")
-#     return register_defaults(config_params)
-
-
-# def register_defaults(config_params, allow_overwrite=False):
-#     global hyperparams
-#     # TODO: fails on nested config object
-#     if allow_overwrite:
-#         hyperparams = None
-#
-#     if hyperparams is not None:
-#         raise RuntimeError("refusing to overwrite registered parameters")
-#
-#     if isinstance(config_params, argparse.Namespace):
-#         raise Exception("Need a dict, use var() or locals()")
-#
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('_ignored', nargs='*')
-#
-#     for k, v in config_params.items():
-#         if _is_valid_hyperparam(k, v):
-#             parser.add_argument(f"--{k}", type=type(v), default=v)
-#             if "_" in k:
-#                 k = k.replace("_", "-")
-#                 parser.add_argument(f"--{k}", type=type(v), default=v)
-#
-#     try:
-#         parsed = parser.parse_args()
-#     except TypeError as e:
-#         print("Type mismatch between registered hyperparameters defaults and actual values,"
-#               " it might be a float argument that was passed as an int (e.g. lr=1 rather than lr=1.0) but set as a float (--lr 0.1)")
-#         raise e
-#
-#     for k, v in vars(parsed).items():
-#         config_params[k] = v
-#
-#     hyperparams = config_params.copy()
 
 
 def _is_valid_hyperparam(key, value):
@@ -177,8 +132,9 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
             extra_modules = "@".join(extra_modules)
 
             sweep_id = None
+            wandb_api = wandb.Api()
             if sweep_definition:
-                entity = wandb_kwargs.get("entity", None)
+                entity = wandb_kwargs.get("entity", wandb_api.default_entity)
                 sweep_id = _load_sweep(entrypoint, experiment_id, project_name, sweep_definition, entity)
                 sweep_path = [entity, project_name, sweep_id]
                 sweep_id = "/".join(sweep_path)
