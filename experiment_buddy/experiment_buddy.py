@@ -137,7 +137,9 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     except git.InvalidGitRepositoryError:
         raise ValueError(f"Could not find a git repo")
 
-    if "project" not in wandb_kwargs:
+    if "project" in wandb_kwargs:
+        project_name = wandb_kwargs["project"]
+    else:
         project_name = experiment_buddy.utils.get_project_name(git_repo)
         wandb_kwargs["project"] = project_name
 
