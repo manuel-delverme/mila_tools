@@ -28,7 +28,7 @@ FOLDER=$SLURM_TMPDIR/src/
 
 log "downloading source code from $GIT_URL to $FOLDER"
 # https://stackoverflow.com/questions/7772190/passing-ssh-options-to-git-clone/28527476#28527476
-GIT_SSH_COMMAND="ssh -v -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone $GIT_URL $FOLDER/
+GIT_SSH_COMMAND="ssh -v -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no" git clone $GIT_URL $FOLDER
 cd $FOLDER || exit
 git checkout $HASH_COMMIT
 log "pwd is now $(pwd)"
@@ -56,7 +56,9 @@ python3 -m pip install pip==22.2
 log "Downloading modules"
 python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f https://download.pytorch.org/whl/torch_stable.html -f https://storage.googleapis.com/jax-releases/jax_releases.html --use-deprecated=legacy-resolver
 
-export XLA_FLAGS=--xla_gpu_cuda_data_dir=/cvmfs/ai.mila.quebec/apps/x86_64/common/cuda/10.1/
-# TODO: the client should send the experiment_buddy version to avoid issues
-
+# Check if "xtb" is in the EXTRA_MODULES
+if echo "$EXTRA_MODULES" | grep -q "xtb"; then
+    # If "xtb" is found, remove 'pydantic' from requirements.txt
+    sed -i '/pydantic/d' requirements.txt
+fi
 wandb agent "$ENTRYPOINT"
