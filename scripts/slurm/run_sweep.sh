@@ -58,7 +58,8 @@ python3 -m pip install --upgrade -r "requirements.txt" --exists-action w -f http
 
 # Check if "xtb" is in the EXTRA_MODULES
 if echo "$EXTRA_MODULES" | grep -q "xtb"; then
-    # If "xtb" is found, remove 'pydantic' from requirements.txt
-    sed -i '/pydantic/d' requirements.txt
+  # If "xtb" is found, remove 'pydantic' from requirements.txt
+  sed -i '/pydantic/d' requirements.txt
+  log "Removed pydantic from requirements.txt"
 fi
 wandb agent "$ENTRYPOINT"
