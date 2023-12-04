@@ -52,9 +52,26 @@ class WandbWrapper:
             wandb_kwargs["settings"] = wandb_kwargs.get("settings", wandb.Settings(start_method="fork"))
 
         self.run = wandb.init(name=experiment_id, **wandb_kwargs)
+        self.already_logged = set()
 
-    def log(self, *args, **kwargs):
-        self.run.log(*args, **kwargs)
+    def log(self, metrics_dict, **kwargs):
+        # args, = args
+        if isinstance(metrics_dict, dict):
+            new_keys = set(metrics_dict.keys())
+            if new_keys.issubset(self.already_logged):
+                raise ValueError(f"Keys {new_keys - self.already_logged} already logged")
+            self.already_logged.update(new_keys)
+        elif isinstance(metrics_dict, str):
+            if metrics_dict in self.already_logged:
+                raise ValueError(f"Key {metrics_dict} already logged")
+            self.already_logged.add(metrics_dict)
+        else:
+            raise ValueError(f"Invalid type {type(metrics_dict)}")
+
+        self.run.log(metrics_dict, **kwargs)
+
+        if "commit" in kwargs and kwargs["commit"]:
+            self.already_logged = set()
 
 
 def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_kwargs=None,
