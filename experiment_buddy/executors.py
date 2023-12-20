@@ -5,6 +5,7 @@ import re
 import subprocess
 import tarfile
 import tempfile
+import threading
 import time
 import urllib.parse
 import uuid
@@ -298,20 +299,32 @@ class AwsExecutor(SSHExecutor):
         self.ssh_session.run(ssh_command)
 
 
-class SSHSLURMExecutor(Executor):
-    def __init__(self, url):
-        ensure_torch_compatibility()
+slurm_ssh_session = None
+slurm_ssh_session_lock = threading.Lock()
+
+
+def get_singleton_ssh_session(url, connect_timeout, forward_agent):
+    with slurm_ssh_session_lock:
+        global slurm_ssh_session
         for trial_idx in range(3):
             try:
-                self.ssh_session = fabric.Connection(host=url.path, connect_timeout=10, forward_agent=False)
-                self.ssh_session.run("")
+                slurm_ssh_session = fabric.Connection(
+                    host=url.path, connect_timeout=connect_timeout, forward_agent=forward_agent)
+                slurm_ssh_session.run("")
                 break
             except Exception as e:
                 print(f"Failed to connect to the remote machine, retrying in {trial_idx * 5} seconds", e)
                 time.sleep(trial_idx * 5)
+    return slurm_ssh_session
+
+
+class SSHSLURMExecutor(Executor):
+    def __init__(self, url):
+        ensure_torch_compatibility()
         self.scritps_folder = None
         self.extra_slurm_header = None
         self.working_dir = None
+        self.ssh_session = get_singleton_ssh_session(url, connect_timeout=10, forward_agent=True)
 
     def run(self, cmd):
         return self.ssh_session.run(cmd)

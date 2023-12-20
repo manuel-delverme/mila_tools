@@ -59,7 +59,7 @@ class WandbWrapper:
         if isinstance(metrics_dict, dict):
             new_keys = set(metrics_dict.keys())
             if new_keys.issubset(self.already_logged):
-                raise ValueError(f"Keys {new_keys - self.already_logged} already logged")
+                raise ValueError(f"Keys {new_keys.intersection(self.already_logged)}")
             self.already_logged.update(new_keys)
         elif isinstance(metrics_dict, str):
             if metrics_dict in self.already_logged:
@@ -103,6 +103,10 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     debug = sys.gettrace() is not None and not os.environ.get('BUDDY_DEBUG_DEPLOYMENT', False)
     running_on_cluster = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not url and not running_on_cluster
+
+    local_run = False
+    debug = False
+    url = "cc-cedar"
 
     try:
         git_repo = git.Repo(search_parent_directories=True)
