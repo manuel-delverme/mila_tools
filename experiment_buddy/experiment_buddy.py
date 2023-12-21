@@ -55,8 +55,9 @@ class WandbWrapper:
         self.already_logged = set()
 
     def log(self, metrics_dict, **kwargs):
-        # args, = args
-        if isinstance(metrics_dict, dict):
+        if not metrics_dict:
+            pass
+        elif isinstance(metrics_dict, dict):
             new_keys = set(metrics_dict.keys())
             if new_keys.issubset(self.already_logged):
                 raise ValueError(f"Keys {new_keys.intersection(self.already_logged)}")
