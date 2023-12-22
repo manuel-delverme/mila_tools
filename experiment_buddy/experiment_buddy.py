@@ -105,10 +105,6 @@ def deploy(url: str = "", sweep_definition: str = "", proc_num: int = 1, wandb_k
     running_on_cluster = "SLURM_JOB_ID" in os.environ.keys() or "BUDDY_IS_DEPLOYED" in os.environ.keys()
     local_run = not url and not running_on_cluster
 
-    local_run = False
-    debug = False
-    url = "cc-cedar"
-
     try:
         git_repo = git.Repo(search_parent_directories=True)
     except git.InvalidGitRepositoryError:
